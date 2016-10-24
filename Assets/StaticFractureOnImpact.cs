@@ -20,6 +20,8 @@ public class StaticFractureOnImpact : MonoBehaviour {
 			this.RemoveAllComponents();
 			//create two game objects of half the the width as this cube
 			//add them as child to this cube
+			GameObject first = Instantiate(Resources.Load("SplitHalf 1", typeof(GameObject))) as GameObject;
+			GameObject second = Instantiate(Resources.Load("SplitHalf 2", typeof(GameObject))) as GameObject;
 
 		}
 
