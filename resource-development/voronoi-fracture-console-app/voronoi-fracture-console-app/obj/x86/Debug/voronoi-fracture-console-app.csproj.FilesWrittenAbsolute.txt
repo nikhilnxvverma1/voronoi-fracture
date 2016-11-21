@@ -1,0 +1,5 @@
+/Users/NikhilVerma/Desktop/voronoi-fracture/resource-development/voronoi-fracture-console-app/voronoi-fracture-console-app/obj/x86/Debug/.NETFramework,Version=v4.5.AssemblyAttribute.cs
+/Users/NikhilVerma/Desktop/voronoi-fracture/resource-development/voronoi-fracture-console-app/voronoi-fracture-console-app/bin/Debug/voronoi-fracture-console-app.exe.mdb
+/Users/NikhilVerma/Desktop/voronoi-fracture/resource-development/voronoi-fracture-console-app/voronoi-fracture-console-app/bin/Debug/voronoi-fracture-console-app.exe
+/Users/NikhilVerma/Desktop/voronoi-fracture/resource-development/voronoi-fracture-console-app/voronoi-fracture-console-app/obj/x86/Debug/voronoi-fracture-console-app.exe
+/Users/NikhilVerma/Desktop/voronoi-fracture/resource-development/voronoi-fracture-console-app/voronoi-fracture-console-app/obj/x86/Debug/voronoi-fracture-console-app.exe.mdb
