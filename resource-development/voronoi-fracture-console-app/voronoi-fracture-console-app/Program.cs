@@ -14,7 +14,7 @@ namespace FortuneAlgorithm{
 			//make the event queue
 			PriorityQueue queue=new PriorityQueue();
 			for(int i=0;i<input.Length/2;i++){
-				queue.Push(new Event(input[i,0],input[i,1]));
+				queue.Push(new SiteEvent(input[i,0],input[i,1]));
 			}
 			while(!queue.IsEmpty()){
 				Event thisEvent=queue.Pop();
@@ -27,7 +27,7 @@ namespace FortuneAlgorithm{
 		}
 	}
 
-	class Event{
+	abstract class Event{
 		public float x;
 		public float y;
 
@@ -36,12 +36,21 @@ namespace FortuneAlgorithm{
 			this.y=y;
 		}
 
-		virtual public void Handle(){
-			Console.WriteLine(this);
-		}
+		abstract public void Handle();
 
 		public override string ToString (){
 			return "("+x+","+y+")";
+		}
+	}
+
+	class SiteEvent :Event{
+
+		public SiteEvent(float x,float y):base(x,y){
+			
+		}
+
+		override public void Handle(){
+			Console.WriteLine(this);
 		}
 	}
 
@@ -180,6 +189,7 @@ namespace FortuneAlgorithm{
 	}
 
 	class Parabola:Node{
+		SiteEvent siteEvent;
 		CircleEvent circleEvent;
 		public override bool IsLeaf (){
 			return true;
@@ -187,6 +197,8 @@ namespace FortuneAlgorithm{
 	}
 
 	class Internal:Node{
+		SiteEvent site1;
+		SiteEvent site2;
 		Edge edge;
 		Node left;
 		Node right;
@@ -208,6 +220,7 @@ namespace FortuneAlgorithm{
 	}
 
 	class Face{
+		SiteEvent siteEvent;
 		Edge startingEdge;
 	}
 
