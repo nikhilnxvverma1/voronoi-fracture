@@ -36,6 +36,7 @@ namespace FortuneAlgorithm{
 	abstract class Event{
 		public float x;
 		public float y;
+		public int index;
 
 		public Event(float x,float y){
 			this.x=x;
@@ -62,7 +63,12 @@ namespace FortuneAlgorithm{
 			if(above==null){//this means that the beach line tree is empty
 				beachline.InsertRootParabola(this);	
 			}else{
-				beachline.InsertAndSplit(this,above);
+				if(above.circleEvent!=null){
+					queue.Delete(above.circleEvent);
+				}
+				Parabola newParabola=beachline.InsertAndSplit(this,above);
+				Triplet leftSide=beachline.FindTripletFromLeftSide(newParabola);
+				Triplet rightSide=beachline.FindTripletFromRightSide(newParabola);
 			}
 		}
 	}
@@ -100,7 +106,7 @@ namespace FortuneAlgorithm{
 
 			if(heap.Count>1){
 				object lastEvent=heap[heap.Count-1];
-				heap.RemoveAt(heap.Count-1);
+				heap.RemoveAt(heap.Count-1);//we are removing the last element so is an O(1) operation since it doesn't shift remaining things up on place
 				heap[0]=lastEvent;
 				BubbleDown(0);
 			}else{
@@ -110,6 +116,7 @@ namespace FortuneAlgorithm{
 		}
 
 		public void Push(Event eventNode){
+			eventNode.index=heap.Count;
 			heap.Add(eventNode);
 			BubbleUp(heap.Count-1);
 			Console.WriteLine("Inserted event "+eventNode.x+" "+eventNode.y);
@@ -139,7 +146,8 @@ namespace FortuneAlgorithm{
 			while(index>0 && Compare(heap[index],heap[Parent(index)])){
 				int parentIndex=Parent(index);
 
-				//swap this position with its parent
+				//swap this positions and indices with its parent
+				SwapIndices(heap[index],heap[parentIndex]);
 				object t=heap[index];
 				heap[index]=heap[parentIndex];
 				heap[parentIndex]=t;
@@ -147,10 +155,18 @@ namespace FortuneAlgorithm{
 			}
 		}
 
+		private void SwapIndices(object e1,object e2){
+			int t=((Event)e1).index;
+			((Event)e1).index=((Event)e2).index;
+			((Event)e2).index=t;
+		}
+
 		private void BubbleDown(int index){
 			int swapIndex=SmallestBetweenRootAndChildren(index);
 			while(swapIndex!=index){
 
+				//swap this positions and indices with the smallest node
+				SwapIndices(heap[index],heap[swapIndex]);
 				object t=heap[index];
 				heap[index]=heap[swapIndex];
 				heap[swapIndex]=t;
@@ -194,27 +210,47 @@ namespace FortuneAlgorithm{
 				}
 			}
 		}
+
+		/**
+		 * Deletes an event using its index inforamtion. This method returns false if the event object is not in the queue
+		 **/
+		public bool Delete(Event eventObj){
+			Event eventInQ=(Event)heap[eventObj.index];
+			if(eventInQ!=eventObj){
+				return false;
+			}
+
+			if(heap.Count>1){
+				object lastEvent=heap[heap.Count-1];
+				heap.RemoveAt(heap.Count-1);//we are removing the last element so is an O(1) operation since it doesn't shift remaining things up on place
+				heap[eventObj.index]=lastEvent;
+				BubbleDown(eventObj.index);
+			}else{
+				heap.RemoveAt(heap.Count-1);
+			}
+			return true;
+		}
 	}
 
 	abstract class Node{
-		Node parent;
+		public InternalNode parent;
 
-		public Node(Node p){
+		public Node(InternalNode p){
 			parent=p;
 		}
 
 		abstract public bool IsLeaf();
 		/**
-		 * Traverses to the leaf node for the given x
+		 * Traverses to the leaf node for the given x,y 
 		 */
 		abstract public Node Traverse(float x,float y);
 	}
 
 	class Parabola:Node{
-		SiteEvent siteEvent;
-		CircleEvent circleEvent;
+		public SiteEvent siteEvent;
+		public CircleEvent circleEvent;
 
-		public Parabola(SiteEvent siteEvent,Node parent):base(parent){
+		public Parabola(SiteEvent siteEvent,InternalNode parent):base(parent){
 			this.siteEvent=siteEvent;
 		}
 
@@ -227,14 +263,26 @@ namespace FortuneAlgorithm{
 		}
 	}
 
+	class Triplet{
+		public Parabola left;
+		public Parabola middle;
+		public Parabola right;
+
+		public Triplet(Parabola left,Parabola middle,Parabola right){
+			this.left=left;
+			this.middle=middle;
+			this.right=right;
+		}
+	}
+
 	class InternalNode:Node{
 		public SiteEvent site1;
 		public SiteEvent site2;
 		Edge edge;
-		Node left;
-		Node right;
+		public Node left;
+		public Node right;
 
-		public InternalNode(SiteEvent site1,SiteEvent site2,Node parent):base(parent){
+		public InternalNode(SiteEvent site1,SiteEvent site2,InternalNode parent):base(parent){
 			this.site1=site1;
 			this.site2=site2;
 		}
@@ -290,6 +338,7 @@ namespace FortuneAlgorithm{
 				return "("+x+","+y+")";
 			}
 		}
+			
 	}
 
 	class BeachLine{
@@ -312,8 +361,123 @@ namespace FortuneAlgorithm{
 			root=new Parabola(siteEvent,null);
 		}
 
-		public void InsertAndSplit(SiteEvent siteEvent,Parabola above){
+		public Parabola InsertAndSplit(SiteEvent siteEvent,Parabola above){
 			
+			//we try to maintain the left site in site1 and right in site2 but it doesn't really make any difference
+			SiteEvent site1,site2;
+			if(siteEvent.x>above.siteEvent.x){
+				site1=above.siteEvent;
+				site2=siteEvent;
+			}else{
+				site1=siteEvent;
+				site2=above.siteEvent;
+			}
+
+			//divide this parabola node into 3 parabola nodes by using two internal nodes 
+			InternalNode replacer=new InternalNode(site1,site2,above.parent);
+			replacer.left=new Parabola(above.siteEvent,replacer);
+
+			InternalNode subNode=new InternalNode(site1,site2,replacer);
+			replacer.right=subNode;
+
+			Parabola newParabola=new Parabola(siteEvent,subNode);
+			subNode.left=newParabola;
+			subNode.right=new Parabola(above.siteEvent,subNode);
+
+			return newParabola;
+		}
+
+		public Triplet FindTripletFromLeftSide(Parabola parabola){			
+			//find the right most leaf node in the left subtree
+			Parabola left1=FindLeftSibling(parabola);
+			if(left1!=null){
+				Parabola left2=FindLeftSibling(left1);
+				if(left2!=null){
+					return new Triplet(left2,left1,parabola);				
+				}else{
+					return null;
+				}
+			}else{
+				return null;
+			}
+		}
+
+		public Triplet FindTripletFromRightSide(Parabola parabola){			
+			//find the left most leaf nod in the right subtree
+			Parabola right1=FindLeftSibling(parabola);
+			if(right1!=null){
+				Parabola right2=FindLeftSibling(right1);
+				if(right2!=null){
+					return new Triplet(parabola,right1,right2);	
+				}else{
+					return null;
+				}
+			}else{
+				return null;
+			}
+		}
+
+		private Parabola FindLeftSibling(Parabola parabola){
+			
+			InternalNode node=parabola.parent;
+			if(node==null){
+				return null;
+			}else if(node.left==parabola){
+				node=node.parent;
+			}
+				
+			//look for the parent that has a left child
+			while(node!=null&& node.left==null){
+				node=node.parent;
+			}
+
+			//if such parent is found
+			if(node==null){
+				return null;
+			}
+
+			//get the right most leaf child node of this parent's left subtree
+			if(node.left.IsLeaf()){
+				return (Parabola)node.left;
+			}else{
+				Node generalNode=node.left;
+				while(!generalNode.IsLeaf()){
+					generalNode=((InternalNode)node).right;
+				}
+				return (Parabola)generalNode;
+			}
+		}
+
+		private Parabola FindRightSibling(Parabola parabola){
+
+			InternalNode node=parabola.parent;
+			if(node==null){
+				return null;
+			}else if(node.right==parabola){
+				node=node.parent;
+			}
+
+			//look for the parent that has a left child
+			while(node!=null&& node.right==null){
+				node=node.parent;
+			}
+
+			//if such parent is found
+			if(node==null){
+				return null;
+			}
+
+			//get the left most leaf child node of this parent's right subtree
+			if(node.right.IsLeaf()){
+				return (Parabola)node.right;
+			}else{
+				Node generalNode=node.right;
+				while(!generalNode.IsLeaf()){
+					generalNode=((InternalNode)generalNode).left;
+				}
+				return (Parabola)generalNode;
+			}
+
 		}
 	}
 
