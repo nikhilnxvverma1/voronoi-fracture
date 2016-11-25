@@ -57,7 +57,7 @@ namespace FortuneAlgorithm{
 		}
 
 		override public void Handle(PriorityQueue queue,BeachLine beachline,DoublyConnectedEdgeList dcel){
-			Console.WriteLine("Handling "+this);
+			Console.WriteLine("Handling Site Event: "+this);
 
 			Parabola above=beachline.GetParabolaFor(x,y);
 			if(above==null){//this means that the beach line tree is empty
@@ -68,19 +68,27 @@ namespace FortuneAlgorithm{
 				}
 				Parabola newParabola=beachline.InsertAndSplit(this,above);
 				Triplet leftSide=beachline.FindTripletFromLeftSide(newParabola);
+				if(leftSide!=null){
+					CircleEvent circleEvent=leftSide.ComputeCircleEvent();
+					queue.Push(circleEvent);
+				}
 				Triplet rightSide=beachline.FindTripletFromRightSide(newParabola);
+				if(rightSide!=null){
+					CircleEvent circleEvent=rightSide.ComputeCircleEvent();
+					queue.Push(circleEvent);
+				}
 			}
 		}
 	}
 
 	class CircleEvent : Event{
-		Parabola parabola;	
+		public Triplet triplet;	
 
-		public CircleEvent(float x,float y):base(x,y){
-			
+		public CircleEvent(float x,float y,Triplet triplet):base(x,y){
+			this.triplet=triplet;
 		}
 		override public void Handle(PriorityQueue queue,BeachLine beachline,DoublyConnectedEdgeList dcel){
-			Console.WriteLine(this);
+			Console.WriteLine("Handling Circle Event: "+this);
 		}
 	}
 
@@ -277,6 +285,103 @@ namespace FortuneAlgorithm{
 			this.middle=middle;
 			this.right=right;
 		}
+
+		public CircleEvent ComputeCircleEvent(){
+			
+			//get the equations of the two perpendicular bisectors
+			PerpendicularBisector p1=new PerpendicularBisector(left.siteEvent.x,left.siteEvent.y,middle.siteEvent.x,middle.siteEvent.y);
+			PerpendicularBisector p2=new PerpendicularBisector(right.siteEvent.x,right.siteEvent.y,middle.siteEvent.x,middle.siteEvent.y);
+
+			//find out the intersectino point of the perpendicular bisectors to get the center of the circle
+			Point center=p1.GetIntersectionPoint(p2);
+
+			//get the radius by finding the difference between any point and the center
+			float radius=(float)Math.Sqrt((center.x-left.siteEvent.x)*(center.x-left.siteEvent.x)+(center.y-left.siteEvent.y)*(center.y-left.siteEvent.y));
+			return new CircleEvent(center.x,center.y-radius,this);
+		}
+
+		class PerpendicularBisector{
+			float m;
+			float c;
+			bool horizontalLine=false;
+			bool verticalLine=false;
+			float level;
+
+			public PerpendicularBisector(float x1,float y1,float x2,float y2){
+				if(x1-x2==0){
+					horizontalLine=true;
+					level=(y1+y2)/2;
+				}else if(y1-y2==0){
+					verticalLine=true;
+					level=(x1+x2)/2;
+				}else{
+					//midpoint
+					float mx=(x1+x2)/2;
+					float my=(y1+y2)/2;
+
+					//inverse slope
+					float normalSlope=(y1-y2)/(x1-x2);
+					m=-(1/normalSlope);
+
+					//substitute midpoint to get c
+					c=my-m*mx;
+				}
+
+
+			}
+
+			public Point GetIntersectionPoint(PerpendicularBisector lineEquation){
+				float x,y;
+				if(horizontalLine){
+					if(lineEquation.verticalLine){
+						x=lineEquation.level;
+						y=level;
+					}else if(lineEquation.horizontalLine){
+						return null;//parallel lines
+					}else{
+						y=level;
+						x=(y-lineEquation.c)/lineEquation.m;
+					}
+				}else if(verticalLine){
+					if(lineEquation.verticalLine){
+						return null;//parallel lines
+					}else if(lineEquation.horizontalLine){
+						x=level;
+						y=lineEquation.level;
+					}else{
+						y=level;
+						x=(y-lineEquation.c)/lineEquation.m;
+					}
+				}else{
+					if(lineEquation.verticalLine){
+						x=lineEquation.level;
+						y=m*x+c;
+					}else if(lineEquation.horizontalLine){						
+						y=lineEquation.level;
+						x=(y-c)/m;
+					}else{
+						x=(c-lineEquation.c)/(lineEquation.m-m);
+						y=m*x+c;
+					}
+				}
+					
+				return new Point(x,y);
+			}
+		}
+
+		class Point{
+			public float x;
+			public float y;
+			public Point(float x,float y){
+				this.x=x;
+				this.y=y;
+			}
+
+			public override string ToString (){
+				return "("+x+","+y+")";
+			}
+		}
+			
 	}
 
 	class InternalNode:Node{
