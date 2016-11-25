@@ -9,7 +9,7 @@ namespace FortuneAlgorithm{
 		public static void Main (string[] args){
 
 			//input
-			float [,] input=new float[,]{{23,43},{54,14},{34,12},{12,53},{12,56},{88,54}};
+			float [,] input=new float[,]{{20,80},{40,60},{20,30},{70,70},{60,50}};
 
 			//make the event queue
 			PriorityQueue queue=new PriorityQueue();
@@ -19,9 +19,9 @@ namespace FortuneAlgorithm{
 				queue.Push(new SiteEvent(input[i,0],input[i,1]));
 			}
 
-			InternalNode node=new InternalNode(new SiteEvent(4.83f,2.558f),new SiteEvent(3.16f,2.543f),null);
-			InternalNode.BreakPoint b=node.ComputeBreakpointAt(1f);
-			Console.WriteLine("breakpoint is "+b);
+//			InternalNode node=new InternalNode(new SiteEvent(40f,60f),new SiteEvent(70f,70f),null);
+//			InternalNode.BreakPoint b=node.ComputeBreakpointAt(50f);
+//			Console.WriteLine("breakpoint is "+b);
 			while(!queue.IsEmpty()){
 				Event thisEvent=queue.Pop();
 				if (thisEvent!=null) {
@@ -57,7 +57,7 @@ namespace FortuneAlgorithm{
 		}
 
 		override public void Handle(PriorityQueue queue,BeachLine beachline,DoublyConnectedEdgeList dcel){
-			Console.WriteLine(this);
+			Console.WriteLine("Handling "+this);
 
 			Parabola above=beachline.GetParabolaFor(x,y);
 			if(above==null){//this means that the beach line tree is empty
@@ -261,6 +261,10 @@ namespace FortuneAlgorithm{
 		public override Node Traverse (float x, float y){
 			return this;
 		}
+
+		public override string ToString (){
+			return "P"+this.siteEvent;
+		}
 	}
 
 	class Triplet{
@@ -278,7 +282,7 @@ namespace FortuneAlgorithm{
 	class InternalNode:Node{
 		public SiteEvent site1;
 		public SiteEvent site2;
-		Edge edge;
+		public Edge edge;
 		public Node left;
 		public Node right;
 
@@ -289,6 +293,10 @@ namespace FortuneAlgorithm{
 
 		public override bool IsLeaf (){			
 			return false;
+		}
+
+		public override string ToString (){
+			return "S"+site1+" "+site2;
 		}
 
 		public override Node Traverse (float x, float y){
@@ -354,7 +362,7 @@ namespace FortuneAlgorithm{
 				node=node.Traverse(x,y);
 			}while(!node.IsLeaf());
 
-			return null;
+			return (Parabola)node;
 		}
 
 		public void InsertRootParabola(SiteEvent siteEvent){
@@ -384,6 +392,17 @@ namespace FortuneAlgorithm{
 			subNode.left=newParabola;
 			subNode.right=new Parabola(above.siteEvent,subNode);
 
+			//replace the above with replacer
+			if(above.parent!=null){
+				if(above==above.parent.left){
+					above.parent.left=replacer;
+				}else{
+					above.parent.right=replacer;
+				}
+			}else{
+				root=replacer;
+			}
+
 			return newParabola;
 		}
 
@@ -404,9 +423,9 @@ namespace FortuneAlgorithm{
 
 		public Triplet FindTripletFromRightSide(Parabola parabola){			
 			//find the left most leaf nod in the right subtree
-			Parabola right1=FindLeftSibling(parabola);
+			Parabola right1=FindRightSibling(parabola);
 			if(right1!=null){
-				Parabola right2=FindLeftSibling(right1);
+				Parabola right2=FindRightSibling(right1);
 				if(right2!=null){
 					return new Triplet(parabola,right1,right2);	
 				}else{
@@ -419,30 +438,27 @@ namespace FortuneAlgorithm{
 
 		private Parabola FindLeftSibling(Parabola parabola){
 			
-			InternalNode node=parabola.parent;
-			if(node==null){
-				return null;
-			}else if(node.left==parabola){
-				node=node.parent;
-			}
-				
+			Node node=parabola;
+
 			//look for the parent that has a left child
-			while(node!=null&& node.left==null){
+			Node comingFrom=null;
+			while(node.parent!=null&& node.parent.left==node){
+				comingFrom=node;
 				node=node.parent;
 			}
 
-			//if such parent is found
-			if(node==null){
+			//it reached the root coming from the left side
+			if(node.parent==null && !node.IsLeaf()&& ((InternalNode)node).left==comingFrom){
 				return null;
 			}
 
 			//get the right most leaf child node of this parent's left subtree
-			if(node.left.IsLeaf()){
-				return (Parabola)node.left;
+			if(node.parent.left.IsLeaf()){
+				return (Parabola)node.parent.left;
 			}else{
-				Node generalNode=node.left;
+				Node generalNode=node.parent.left;
 				while(!generalNode.IsLeaf()){
-					generalNode=((InternalNode)node).right;
+					generalNode=((InternalNode)generalNode).right;
 				}
 				return (Parabola)generalNode;
 			}
@@ -450,28 +466,25 @@ namespace FortuneAlgorithm{
 
 		private Parabola FindRightSibling(Parabola parabola){
 
-			InternalNode node=parabola.parent;
-			if(node==null){
-				return null;
-			}else if(node.right==parabola){
-				node=node.parent;
-			}
+			Node node=parabola;
 
 			//look for the parent that has a left child
-			while(node!=null&& node.right==null){
+			Node comingFrom=null;
+			while(node.parent!=null&& node.parent.right==node){
+				comingFrom=node;
 				node=node.parent;
 			}
 
-			//if such parent is found
-			if(node==null){
+			//it reached the root coming from the right side
+			if(node.parent==null && !node.IsLeaf() && ((InternalNode)node).right==comingFrom){
 				return null;
 			}
 
 			//get the left most leaf child node of this parent's right subtree
-			if(node.right.IsLeaf()){
-				return (Parabola)node.right;
+			if(node.parent.right.IsLeaf()){
+				return (Parabola)node.parent.right;
 			}else{
-				Node generalNode=node.right;
+				Node generalNode=node.parent.right;
 				while(!generalNode.IsLeaf()){
 					generalNode=((InternalNode)generalNode).left;
 				}
