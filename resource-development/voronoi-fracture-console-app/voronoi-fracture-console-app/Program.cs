@@ -77,15 +77,9 @@ namespace FortuneAlgorithm{
 			if(above==null){//this means that the beach line tree is empty
 				beachline.InsertRootParabola(this);	
 			}else{
-				if(above.circleEvent!=null){
-					//remove the circle event from priority queue
-					queue.Delete(above.circleEvent);
-
-					//remmove references of this event from its corresponding arcs
-					above.circleEvent.triplet.left.circleEvent=null;
-					above.circleEvent.triplet.middle.circleEvent=null;
-					above.circleEvent.triplet.right.circleEvent=null;
-
+				if(above.circleEvent!=null){					
+					//remove the circle event from priority queue and remove references
+					above.circleEvent.Delete(queue);
 				}
 
 				//insert the new site's arc under the arc above
@@ -96,24 +90,14 @@ namespace FortuneAlgorithm{
 				if(leftSide!=null){
 					CircleEvent circleEvent=leftSide.ComputeCircleEvent();
 					if(circleEvent.y<=y){
-						queue.Push(circleEvent);
-
-						//keep reference of circle event in the arcs
-						leftSide.left.circleEvent=circleEvent;
-						leftSide.middle.circleEvent=circleEvent;
-						leftSide.right.circleEvent=circleEvent;
+						circleEvent.Insert(queue);					
 					}
 				}
 				Triplet rightSide=beachline.FindTripletOnRightSide(newParabola);
 				if(rightSide!=null){
 					CircleEvent circleEvent=rightSide.ComputeCircleEvent();
 					if(circleEvent.y<=y){
-						queue.Push(circleEvent);
-
-						//keep reference of circle event in the arcs
-						rightSide.left.circleEvent=circleEvent;
-						rightSide.middle.circleEvent=circleEvent;
-						rightSide.right.circleEvent=circleEvent;
+						circleEvent.Insert(queue);
 					}
 				}
 			}
@@ -161,27 +145,72 @@ namespace FortuneAlgorithm{
 			if(leftSide!=null){
 				CircleEvent circleEvent=leftSide.ComputeCircleEvent();
 				if(circleEvent.y<y){//this time we want them to be strictly below th beachline, because we don't want to repeat this current event again
-					queue.Push(circleEvent);
-
-					//keep reference of circle event in the arcs
-					leftSide.left.circleEvent=circleEvent;
-					leftSide.middle.circleEvent=circleEvent;
-					leftSide.right.circleEvent=circleEvent;
+					circleEvent.Insert(queue);
 				}
 			}
 			Triplet rightSide=beachline.FindTripletOnRightSide(triplet.right);
 			if(rightSide!=null){
 				CircleEvent circleEvent=rightSide.ComputeCircleEvent();
 				if(circleEvent.y<y){//this time we want them to be strictly below th beachline, because we don't want to repeat this current event again
-					queue.Push(circleEvent);
-
-					//keep reference of circle event in the arcs
-					rightSide.left.circleEvent=circleEvent;
-					rightSide.middle.circleEvent=circleEvent;
-					rightSide.right.circleEvent=circleEvent;
+					circleEvent.Insert(queue);
 				}
 			}
-		}			
+		}		
+
+		/**
+		 * Removes the circle event from priority queue and removes its references from the arc(only if they were set).
+		 * Returns true if deleted from queue, false otherwise (in case it wasn't already in queue)
+		 */ 
+		public bool Delete(PriorityQueue queue){
+
+			//nullify the references to this circle event in the triplet arcs(only if it is currently set to this)
+			if(triplet.left.circleEvent==this){
+				triplet.left.circleEvent=null;
+			}
+
+			if(triplet.middle.circleEvent==this){
+				triplet.middle.circleEvent=null;
+			}
+
+			if(triplet.right.circleEvent==this){
+				triplet.right.circleEvent=null;
+			}
+			return queue.Delete(this);
+		}
+
+		/**
+		 * Inserts this circle event in the queue and sets this event as a references in the triplet arcs.
+		 * Also checks are removes the circle event if existed in any of the triplet arc
+		 * Return false if no existing event was found, true otherwise
+		 */
+		public bool Insert(PriorityQueue queue){
+			queue.Push(this);
+
+			//remove existing event
+			bool existingCircleEventPresent=false;
+			if(triplet.left.circleEvent!=this && triplet.left.circleEvent!=null){
+				triplet.left.circleEvent.Delete(queue);
+				existingCircleEventPresent=true;
+			}
+
+			if(triplet.middle.circleEvent!=this && triplet.middle.circleEvent!=null){
+				triplet.middle.circleEvent.Delete(queue);
+				existingCircleEventPresent=true;
+			}
+
+			if(triplet.right.circleEvent!=this && triplet.right.circleEvent!=null){
+				triplet.right.circleEvent.Delete(queue);
+				existingCircleEventPresent=true;
+			}
+
+			//set the references
+			triplet.left.circleEvent=this;
+			triplet.middle.circleEvent=this;
+			triplet.right.circleEvent=this;
+
+			return existingCircleEventPresent;
+
+		}
 	}
 
 	class PriorityQueue{
@@ -206,6 +235,7 @@ namespace FortuneAlgorithm{
 
 			if(heap.Count>1){
 				object lastEvent=heap[heap.Count-1];
+				SwapIndices(lastTop,lastEvent);
 				heap.RemoveAt(heap.Count-1);//we are removing the last element so is an O(1) operation since it doesn't shift remaining things up on place
 				heap[0]=lastEvent;
 				BubbleDown(0);
@@ -475,6 +505,10 @@ namespace FortuneAlgorithm{
 			public override string ToString (){
 				return "("+x+","+y+")";
 			}
+		}
+
+		public override string ToString (){
+			return left+" "+middle+" "+right;
 		}
 			
 	}
