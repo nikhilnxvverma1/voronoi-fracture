@@ -3,13 +3,16 @@ using System.Collections;
 using System.Collections.Generic;
 
 namespace FortuneAlgorithm{
-	
+
+
 	class MainClass{
 		
 		public static void Main (string[] args){
 
 			//input
 			float [,] input=new float[,]{{20,80},{40,60},{20,30},{70,70},{60,50}};
+
+			//{"sites":[200,800,400,600,200,300,700,700,600,500],"queries":[]}
 
 			//make the event queue
 			PriorityQueue queue=new PriorityQueue();
@@ -21,7 +24,8 @@ namespace FortuneAlgorithm{
 
 //			InternalNode node=new InternalNode(new SiteEvent(40f,60f),new SiteEvent(70f,70f),null);
 //			InternalNode.BreakPoint b=node.ComputeBreakpointAt(50f);
-//			Console.WriteLine("breakpoint is "+b);
+//			MainClass.Log("breakpoint is "+b);
+
 			while(!queue.IsEmpty()){
 				Event thisEvent=queue.Pop();
 				if (thisEvent!=null) {
@@ -30,6 +34,16 @@ namespace FortuneAlgorithm{
 					break;
 				}
 			}
+		}
+
+
+		/**
+		 * Simple log method, that is used throughout this namespace. 
+		 * This is done so as to make this algorithm 'environment' independent by making simple change to this method.
+		 * Example: In Unity this method will use 'Debug.Log' etc.
+		 */
+		public static void Log(string message){
+			Console.WriteLine(message);
 		}
 	}
 
@@ -57,7 +71,7 @@ namespace FortuneAlgorithm{
 		}
 
 		override public void Handle(PriorityQueue queue,BeachLine beachline,DoublyConnectedEdgeList dcel){
-			Console.WriteLine("Handling Site Event: "+this);
+			MainClass.Log("Site Event: "+this);
 
 			Parabola above=beachline.GetParabolaFor(x,y);
 			if(above==null){//this means that the beach line tree is empty
@@ -115,12 +129,14 @@ namespace FortuneAlgorithm{
 			this.triplet=triplet;
 		}
 		override public void Handle(PriorityQueue queue,BeachLine beachline,DoublyConnectedEdgeList dcel){
-			Console.WriteLine("Handling Circle Event: "+this);
+			MainClass.Log("Circle Event: "+this);
 
 			float cx=x;
 			float cy=y+radius;
 
-			//TODO add a vertex in the DCEL
+			// add a vertex in the DCEL and connect it to the dangling edge
+			Vertex newVertex=new Vertex(cx,cy);
+			dcel.vertexList.Add(newVertex);
 
 			//assertion: middle arc will definetely have a grand parent 
 			InternalNode grandParent=triplet.middle.parent.parent;
@@ -165,8 +181,7 @@ namespace FortuneAlgorithm{
 					rightSide.right.circleEvent=circleEvent;
 				}
 			}
-
-		}
+		}			
 	}
 
 	class PriorityQueue{
@@ -204,7 +219,7 @@ namespace FortuneAlgorithm{
 			eventNode.index=heap.Count;
 			heap.Add(eventNode);
 			BubbleUp(heap.Count-1);
-			Console.WriteLine("Inserted event "+eventNode.x+" "+eventNode.y);
+			MainClass.Log("Inserted event "+eventNode.x+" "+eventNode.y);
 		}
 
 		public bool IsEmpty(){
@@ -300,10 +315,13 @@ namespace FortuneAlgorithm{
 		 * Deletes an event using its index inforamtion. This method returns false if the event object is not in the queue
 		 **/
 		public bool Delete(Event eventObj){
+
 			Event eventInQ=(Event)heap[eventObj.index];
 			if(eventInQ!=eventObj){
 				return false;
 			}
+
+			MainClass.Log("Deleting "+eventObj);
 
 			if(heap.Count>1){
 				object lastEvent=heap[heap.Count-1];
@@ -471,19 +489,28 @@ namespace FortuneAlgorithm{
 		public InternalNode(SiteEvent site1,SiteEvent site2,InternalNode parent):base(parent){
 			this.site1=site1;
 			this.site2=site2;
+			this.edge=new Edge();
 		}
 
 		public override bool IsLeaf (){			
 			return false;
 		}
 
-		public override string ToString (){
+		public string SiteToString(){
 			return "S"+site1+" "+site2;
 		}
 
+		public override string ToString (){
+
+			string leftSide=left==null?"Left:null":left.IsLeaf()?"Left:"+left:"Left:"+((InternalNode)left).SiteToString();
+			string rightSide=right==null?"Right:null":right.IsLeaf()?"Right:"+right:"Right:"+((InternalNode)right).SiteToString();
+
+			return SiteToString()+" "+leftSide+" "+rightSide;
+		}
+
 		public override Node Traverse (float x, float y){
-			BreakPoint p=ComputeBreakpointAt(y);
-			if(x>p.x){
+			float breakPointX=ComputeBreakpointAt(y);
+			if(x>breakPointX){
 				return right;
 			}else{
 				return left;
@@ -538,9 +565,11 @@ namespace FortuneAlgorithm{
 			}
 		}
 
-		public BreakPoint ComputeBreakpointAt(float y){
-
-			//breakpoint is retrived from the center of the circle touching the two sites and being tangent to the sweep line
+		/**
+		 * Uses the circle technique to compute the breakpoint.(Deprecated because it only gives one breakpoint)
+		 * Breakpoint is retrived from the center of the circle touching the two sites and being tangent to the sweep line.
+		 */
+		public BreakPoint ComputeBreakpointUsingCircleTechnique(float y){
 
 			//by substituting site1 and site 2 in the equation of the circle and substituting the y value of the sweepline 
 			//we can get the x value of the point at which the circle touches the sweep line or in otherwords the x of the center
@@ -561,6 +590,35 @@ namespace FortuneAlgorithm{
 			//perpendicular bisector of a chord will always pass through the center of a circle
 			float centerY=inverseSlope*x+c;
 			return new BreakPoint(x,centerY);
+		}
+
+		/**
+		 * Uses the equation of parabola to compute the x value of the breakpoint.
+		 */
+		public float ComputeBreakpointAt(float y){
+
+			//we use the equation of the parabola to get the intersection of the two arcs
+			float d = 2f*(site1.y-y);
+			float a1 = 1f/d;
+			float b1 = -2f*site1.x/d;
+			float c1 = y+d/4f+site1.x*site1.x/d;
+
+			d = 2f*(site2.y-y);
+			float a2 = 1f/d;
+			float b2 = -2f*site2.x/d;
+			float c2 = y+d/4+site2.x*site2.x/d;//minor adjustment
+
+			float a = a1 - a2;
+			float b = b1 - b2;
+			float c = c1 - c2;
+
+			//since this is a quadratic equation, so it will have 2 solutions
+			float discremenant = b*b - 4 * a * c;
+			float x1 = (-b+(float)Math.Sqrt(discremenant))/(2*a);
+			float x2 = (-b-(float)Math.Sqrt(discremenant))/(2*a);
+
+			//the two solutions are basically the left and the right breakpoint values (just x)
+			return site1.x<=site2.x?Math.Min(x1,x2):Math.Max(x1,x2);
 		}
 
 		public class BreakPoint{
@@ -600,22 +658,12 @@ namespace FortuneAlgorithm{
 		}
 
 		public Parabola InsertAndSplit(SiteEvent siteEvent,Parabola above){
-			
-			//we try to maintain the left site in site1 and right in site2 but it doesn't really make any difference
-			SiteEvent site1,site2;
-			if(siteEvent.x>above.siteEvent.x){
-				site1=above.siteEvent;
-				site2=siteEvent;
-			}else{
-				site1=siteEvent;
-				site2=above.siteEvent;
-			}
 
 			//divide this parabola node into 3 parabola nodes by using two internal nodes 
-			InternalNode replacer=new InternalNode(site1,site2,above.parent);
+			InternalNode replacer=new InternalNode(above.siteEvent,siteEvent,above.parent);
 			replacer.left=new Parabola(above.siteEvent,replacer);
 
-			InternalNode subNode=new InternalNode(site1,site2,replacer);
+			InternalNode subNode=new InternalNode(siteEvent,above.siteEvent,replacer);
 			replacer.right=subNode;
 
 			Parabola newParabola=new Parabola(siteEvent,subNode);
@@ -720,14 +768,20 @@ namespace FortuneAlgorithm{
 				}
 				return (Parabola)generalNode;
 			}
+		}
 
+		public override string ToString (){
+			return "Root: "+this.root;
 		}
 	}
 
 	class Vertex{
 		public float x;
 		public float y;
-
+		public Vertex(float x,float y){
+			this.x=x;
+			this.y=y;
+		}
 	}
 
 	class Face{
