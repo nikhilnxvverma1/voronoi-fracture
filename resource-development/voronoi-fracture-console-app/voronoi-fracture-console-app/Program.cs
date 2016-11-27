@@ -64,31 +64,108 @@ namespace FortuneAlgorithm{
 				beachline.InsertRootParabola(this);	
 			}else{
 				if(above.circleEvent!=null){
+					//remove the circle event from priority queue
 					queue.Delete(above.circleEvent);
+
+					//remmove references of this event from its corresponding arcs
+					above.circleEvent.triplet.left.circleEvent=null;
+					above.circleEvent.triplet.middle.circleEvent=null;
+					above.circleEvent.triplet.right.circleEvent=null;
+
 				}
+
+				//insert the new site's arc under the arc above
 				Parabola newParabola=beachline.InsertAndSplit(this,above);
-				Triplet leftSide=beachline.FindTripletFromLeftSide(newParabola);
+
+				//find consecutive triplets and if exists, add circle events in the queue
+				Triplet leftSide=beachline.FindTripletOnLeftSide(newParabola);
 				if(leftSide!=null){
 					CircleEvent circleEvent=leftSide.ComputeCircleEvent();
-					queue.Push(circleEvent);
+					if(circleEvent.y<=y){
+						queue.Push(circleEvent);
+
+						//keep reference of circle event in the arcs
+						leftSide.left.circleEvent=circleEvent;
+						leftSide.middle.circleEvent=circleEvent;
+						leftSide.right.circleEvent=circleEvent;
+					}
 				}
-				Triplet rightSide=beachline.FindTripletFromRightSide(newParabola);
+				Triplet rightSide=beachline.FindTripletOnRightSide(newParabola);
 				if(rightSide!=null){
 					CircleEvent circleEvent=rightSide.ComputeCircleEvent();
-					queue.Push(circleEvent);
+					if(circleEvent.y<=y){
+						queue.Push(circleEvent);
+
+						//keep reference of circle event in the arcs
+						rightSide.left.circleEvent=circleEvent;
+						rightSide.middle.circleEvent=circleEvent;
+						rightSide.right.circleEvent=circleEvent;
+					}
 				}
 			}
 		}
 	}
 
 	class CircleEvent : Event{
+		float radius;
 		public Triplet triplet;	
 
-		public CircleEvent(float x,float y,Triplet triplet):base(x,y){
+		public CircleEvent(float x,float y,float radius,Triplet triplet):base(x,y-radius){
+			this.radius=radius;
 			this.triplet=triplet;
 		}
 		override public void Handle(PriorityQueue queue,BeachLine beachline,DoublyConnectedEdgeList dcel){
 			Console.WriteLine("Handling Circle Event: "+this);
+
+			float cx=x;
+			float cy=y+radius;
+
+			//TODO add a vertex in the DCEL
+
+			//assertion: middle arc will definetely have a grand parent 
+			InternalNode grandParent=triplet.middle.parent.parent;
+
+			//delete the middle arc and mind its parent's children
+			Node sibling=triplet.middle.parent.OtherChild(triplet.middle);
+			grandParent.Replace(triplet.middle.parent,sibling);//replace child
+
+			//manage grandparent's site
+			SiteEvent otherSiteEvent=triplet.middle.parent.OtherSiteEvent(triplet.middle.siteEvent);
+			if(!grandParent.Contains(otherSiteEvent)){
+				grandParent.Replace(triplet.middle.siteEvent,otherSiteEvent);//replace site event (overloaded method)
+			}
+
+			//nullify this circle event from the triplet arc
+			triplet.left.circleEvent=null;
+			triplet.middle.circleEvent=null;
+			triplet.right.circleEvent=null;
+
+			//find consecutive triplets and if exists, add circle events in the queue
+			Triplet leftSide=beachline.FindTripletOnLeftSide(triplet.left);
+			if(leftSide!=null){
+				CircleEvent circleEvent=leftSide.ComputeCircleEvent();
+				if(circleEvent.y<y){//this time we want them to be strictly below th beachline, because we don't want to repeat this current event again
+					queue.Push(circleEvent);
+
+					//keep reference of circle event in the arcs
+					leftSide.left.circleEvent=circleEvent;
+					leftSide.middle.circleEvent=circleEvent;
+					leftSide.right.circleEvent=circleEvent;
+				}
+			}
+			Triplet rightSide=beachline.FindTripletOnRightSide(triplet.right);
+			if(rightSide!=null){
+				CircleEvent circleEvent=rightSide.ComputeCircleEvent();
+				if(circleEvent.y<y){//this time we want them to be strictly below th beachline, because we don't want to repeat this current event again
+					queue.Push(circleEvent);
+
+					//keep reference of circle event in the arcs
+					rightSide.left.circleEvent=circleEvent;
+					rightSide.middle.circleEvent=circleEvent;
+					rightSide.right.circleEvent=circleEvent;
+				}
+			}
+
 		}
 	}
 
@@ -297,7 +374,7 @@ namespace FortuneAlgorithm{
 
 			//get the radius by finding the difference between any point and the center
 			float radius=(float)Math.Sqrt((center.x-left.siteEvent.x)*(center.x-left.siteEvent.x)+(center.y-left.siteEvent.y)*(center.y-left.siteEvent.y));
-			return new CircleEvent(center.x,center.y-radius,this);
+			return new CircleEvent(center.x,center.y,radius,this);
 		}
 
 		class PerpendicularBisector{
@@ -413,6 +490,54 @@ namespace FortuneAlgorithm{
 			}
 		}
 
+		public bool Contains(SiteEvent siteEvent){
+			return site1==siteEvent||site2==siteEvent;
+		}
+
+		public Node OtherChild(Node child){
+			if(left==child){
+				return right;
+			}else if(right==child){
+				return left;
+			}else{
+				return null;
+			}
+		}
+
+		public SiteEvent OtherSiteEvent(SiteEvent siteEvent){
+			if(siteEvent==site1){
+				return site2;
+			}else if(siteEvent==site2){
+				return site1;
+			}else{
+				return null;
+			}
+		}
+
+		public bool Replace(SiteEvent siteEvent,SiteEvent with){
+			if(site1==siteEvent){
+				site1=with;
+				return true;
+			}else if(site2==siteEvent){
+				site2=with;
+				return true;
+			}else{
+				return false;
+			}
+		}
+
+		public bool Replace(Node node,Node with){
+			if(left==node){
+				left=with;
+				return true;
+			}else if(right==node){
+				right=with;
+				return true;
+			}else{
+				return false;
+			}
+		}
+
 		public BreakPoint ComputeBreakpointAt(float y){
 
 			//breakpoint is retrived from the center of the circle touching the two sites and being tangent to the sweep line
@@ -511,7 +636,7 @@ namespace FortuneAlgorithm{
 			return newParabola;
 		}
 
-		public Triplet FindTripletFromLeftSide(Parabola parabola){			
+		public Triplet FindTripletOnLeftSide(Parabola parabola){			
 			//find the right most leaf node in the left subtree
 			Parabola left1=FindLeftSibling(parabola);
 			if(left1!=null){
@@ -526,7 +651,7 @@ namespace FortuneAlgorithm{
 			}
 		}
 
-		public Triplet FindTripletFromRightSide(Parabola parabola){			
+		public Triplet FindTripletOnRightSide(Parabola parabola){			
 			//find the left most leaf nod in the right subtree
 			Parabola right1=FindRightSibling(parabola);
 			if(right1!=null){
