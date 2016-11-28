@@ -91,14 +91,14 @@ namespace FortuneAlgorithm{
 				Triplet leftSide=beachline.FindTripletOnLeftSide(newParabola);
 				if(leftSide!=null){
 					CircleEvent circleEvent=leftSide.ComputeCircleEvent();
-					if(circleEvent.y<=y){
+					if(circleEvent!=null && circleEvent.y<=y){
 						circleEvent.Insert(queue);					
 					}
 				}
 				Triplet rightSide=beachline.FindTripletOnRightSide(newParabola);
 				if(rightSide!=null){
 					CircleEvent circleEvent=rightSide.ComputeCircleEvent();
-					if(circleEvent.y<=y){
+					if(circleEvent!=null && circleEvent.y<=y){
 						circleEvent.Insert(queue);
 					}
 				}
@@ -141,17 +141,17 @@ namespace FortuneAlgorithm{
 			triplet.middle.circleEvent=null;
 
 			//find consecutive triplets and if exists, add circle events in the queue
-			Triplet leftSide=beachline.FindTripletOnLeftSide(triplet.left);
+			Triplet leftSide=beachline.FindTripletOnLeftSide(triplet.right);
 			if(leftSide!=null){
 				CircleEvent circleEvent=leftSide.ComputeCircleEvent();
-				if(circleEvent.y<y){//this time we want them to be strictly below th beachline, because we don't want to repeat this current event again
+				if(circleEvent!=null && circleEvent.y<y){//this time we want them to be strictly below th beachline, because we don't want to repeat this current event again
 					circleEvent.Insert(queue);
 				}
 			}
-			Triplet rightSide=beachline.FindTripletOnRightSide(triplet.right);
+			Triplet rightSide=beachline.FindTripletOnRightSide(triplet.left);
 			if(rightSide!=null){
 				CircleEvent circleEvent=rightSide.ComputeCircleEvent();
-				if(circleEvent.y<y){//this time we want them to be strictly below th beachline, because we don't want to repeat this current event again
+				if(circleEvent!=null && circleEvent.y<y){//this time we want them to be strictly below th beachline, because we don't want to repeat this current event again
 					circleEvent.Insert(queue);
 				}
 			}
@@ -394,6 +394,19 @@ namespace FortuneAlgorithm{
 		}
 
 		public CircleEvent ComputeCircleEvent(){
+
+			//make sure the three arcs have distinct site events
+			if(left.siteEvent==right.siteEvent || left.siteEvent==middle.siteEvent || middle.siteEvent==right.siteEvent){
+				return null;
+			}
+
+			//its possible that the three parabola nodes considered are not consecutive because one outlier's(left or right) site event 
+			//is situated over on the other side, in which case, the the middle arc is not formed "at" the beachline but within it.
+			//For this purpose we make a simple check. if left-> middle-> right is counter clockwise, then we return null.
+//			if ((lSite.y-cSite.y)*(rSite.x-cSite.x)<=(lSite.x-cSite.x)*(rSite.y-cSite.y)) {return;}
+			if((left.siteEvent.y-middle.siteEvent.y)*(right.siteEvent.x-middle.siteEvent.x)>=(left.siteEvent.x-middle.siteEvent.x)*(right.siteEvent.y-middle.siteEvent.y)){
+				return null;
+			}
 			
 			//get the equations of the two perpendicular bisectors
 			PerpendicularBisector p1=new PerpendicularBisector(left.siteEvent.x,left.siteEvent.y,middle.siteEvent.x,middle.siteEvent.y);
