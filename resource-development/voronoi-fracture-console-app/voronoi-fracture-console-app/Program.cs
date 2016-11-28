@@ -17,14 +17,17 @@ namespace FortuneAlgorithm{
 			//make the event queue
 			PriorityQueue queue=new PriorityQueue();
 			BeachLine beachline=new BeachLine();
-			DoublyConnectedEdgeList dcel=new DoublyConnectedEdgeList();
+			DoublyConnectedEdgeList dcel=new DoublyConnectedEdgeList(0,0,100,100);
 			for(int i=0;i<input.Length/2;i++){
-				queue.Push(new SiteEvent(input[i,0],input[i,1]));
-			}
 
-//			InternalNode node=new InternalNode(new SiteEvent(40f,60f),new SiteEvent(70f,70f),null);
-//			InternalNode.BreakPoint b=node.ComputeBreakpointAt(50f);
-//			MainClass.Log("breakpoint is "+b);
+				//create a new site for this point
+				SiteEvent siteEvent=new SiteEvent(input[i,0],input[i,1]);
+				queue.Push(siteEvent);
+
+				//instantiate and add the face object in the dcel here
+				siteEvent.face=new Face(siteEvent);
+				dcel.faceList.Add(siteEvent.face);
+			}
 
 			while(!queue.IsEmpty()){
 				Event thisEvent=queue.Pop();
@@ -67,6 +70,8 @@ namespace FortuneAlgorithm{
 	}
 
 	class SiteEvent :Event{
+
+		public Face face;
 
 		public SiteEvent(float x,float y):base(x,y){
 			
@@ -518,7 +523,7 @@ namespace FortuneAlgorithm{
 		public InternalNode(SiteEvent site1,SiteEvent site2,InternalNode parent):base(parent){
 			this.site1=site1;
 			this.site2=site2;
-			this.edge=new Edge();
+			this.edge=new Edge(this);
 		}
 
 		public override bool IsLeaf (){			
@@ -820,21 +825,65 @@ namespace FortuneAlgorithm{
 	}
 
 	class Face{
-		SiteEvent siteEvent;
-		Edge startingEdge;
+		public SiteEvent siteEvent;
+		public Edge startingEdge;
+
+		public Face(SiteEvent siteEvent){
+			this.siteEvent=siteEvent;
+		}
+
+		public override string ToString (){
+			return "F"+siteEvent;
+		}
 	}
 
 	class Edge{
-		Vertex origin;
-		Edge twin;
-		Edge next;
-		Edge previous;
-		Face face;
+		public Vertex origin;
+		public Edge twin;
+		public Edge next;
+		public Edge previous;
+		public Face face;
+
+		/**
+		 * Creates an edge with a face. This constructor is used to create the twin edge internally
+		 */
+		private Edge(Face face){
+			this.face=face;
+		}
+
+		/**
+		 * Creates a new edge with site1's face being the face for this edge and site2's face as the face 
+		 * for the internally created twin edge. Both this and twin edge should get added to the DCEL.
+		 */
+		public Edge(InternalNode node){
+			this.face=node.site1.face;
+			this.twin=new Edge(node.site2.face);
+		}
+
+		public override string ToString (){
+			return "E"+this.face+" "+this.origin;
+		}
 	}
 
 	class DoublyConnectedEdgeList{
+		//bounding box lower left and upper right coordinates
+		public float lx;
+		public float ly;
+		public float ux;
+		public float uy;
 		public List<Vertex> vertexList=new List<Vertex>();
 		public List<Face> faceList=new List<Face>();
 		public List<Edge> edgeList=new List<Edge>();
+
+		public DoublyConnectedEdgeList(float lx,float ly,float ux,float uy){
+			this.lx=lx;
+			this.ly=ly;
+			this.ux=ux;
+			this.uy=uy;
+		}
+
+		public override string ToString (){
+			return "V: "+vertexList.Count+" E: "+edgeList.Count+" F: "+faceList.Count;
+		}
 	}
 }
