@@ -10,16 +10,21 @@ public class VoronoiFracture{
 
 		DoublyConnectedEdgeList dcel=new DoublyConnectedEdgeList(0,0,100,100);
 
-		//20,20
-		SiteEvent siteEvent=new SiteEvent(20,20);
-		Face face=new Face(siteEvent);
+
+		SiteEvent siteEvent;
+		Face face;
+
+		//20,30
+		siteEvent=new SiteEvent(20,20);
+		face=new Face(siteEvent);
 		siteEvent.face=face;
 		dcel.faceList.Add(face);
 
-		face.AddEdge(new Edge(new Vertex(40,30)));
-		face.AddEdge(new Edge(new Vertex(0,85)));
-		face.AddEdge(new Edge(new Vertex(0,0)));
 		face.AddEdge(new Edge(new Vertex(50,0)));
+		face.AddEdge(new Edge(new Vertex(48,15)));
+		face.AddEdge(new Edge(new Vertex(15,45)));
+		face.AddEdge(new Edge(new Vertex(0,45)));
+		face.AddEdge(new Edge(new Vertex(0,0)));
 
 		//70,30
 		siteEvent=new SiteEvent(70,30);
@@ -27,11 +32,22 @@ public class VoronoiFracture{
 		siteEvent.face=face;
 		dcel.faceList.Add(face);
 
-		face.AddEdge(new Edge(new Vertex(40,30)));
 		face.AddEdge(new Edge(new Vertex(50,0)));
 		face.AddEdge(new Edge(new Vertex(100,0)));
-		face.AddEdge(new Edge(new Vertex(100,50)));
+		face.AddEdge(new Edge(new Vertex(100,58)));
+		face.AddEdge(new Edge(new Vertex(55,35)));
+		face.AddEdge(new Edge(new Vertex(48,15)));
 
+		//40,60
+		siteEvent=new SiteEvent(40,40);
+		face=new Face(siteEvent);
+		siteEvent.face=face;
+		dcel.faceList.Add(face);
+
+		face.AddEdge(new Edge(new Vertex(48,15)));
+		face.AddEdge(new Edge(new Vertex(55,35)));
+		face.AddEdge(new Edge(new Vertex(43,65)));
+		face.AddEdge(new Edge(new Vertex(15,45)));
 
 		//60,50
 		siteEvent=new SiteEvent(60,50);
@@ -39,11 +55,23 @@ public class VoronoiFracture{
 		siteEvent.face=face;
 		dcel.faceList.Add(face);
 
-		face.AddEdge(new Edge(new Vertex(40,30)));
-		face.AddEdge(new Edge(new Vertex(100,50)));
+		face.AddEdge(new Edge(new Vertex(55,35)));
+		face.AddEdge(new Edge(new Vertex(100,58)));
 		face.AddEdge(new Edge(new Vertex(100,100)));
+		face.AddEdge(new Edge(new Vertex(50,100)));
+		face.AddEdge(new Edge(new Vertex(43,65)));
+
+		//20,70
+		siteEvent=new SiteEvent(20,70);
+		face=new Face(siteEvent);
+		siteEvent.face=face;
+		dcel.faceList.Add(face);
+
+		face.AddEdge(new Edge(new Vertex(0,45)));
+		face.AddEdge(new Edge(new Vertex(15,45)));
+		face.AddEdge(new Edge(new Vertex(43,65)));
+		face.AddEdge(new Edge(new Vertex(50,100)));
 		face.AddEdge(new Edge(new Vertex(0,100)));
-		face.AddEdge(new Edge(new Vertex(0,85)));
 
 		return dcel;
 	}
