@@ -49,9 +49,16 @@ public class StaticFractureOnImpact : MonoBehaviour {
 	}
 
 	private void CreateBodiesForEachFace(DoublyConnectedEdgeList dcel){
-		
 
+		float vWidth=dcel.ux-dcel.lx;
+		float vHeight=dcel.uy-dcel.ly;
+		float ox=transform.position.x-width/2;
+		float oy=transform.position.y-height/2;
 		foreach(Face face in dcel.faceList){
+
+			float x=face.siteEvent.x * width/vWidth;
+			float y=face.siteEvent.y * height/vHeight;
+
 			GameObject fragment=new GameObject();
 			fragment.AddComponent<Rigidbody>();
 			MeshFilter meshFilter=fragment.AddComponent<MeshFilter>() as MeshFilter;
@@ -64,7 +71,7 @@ public class StaticFractureOnImpact : MonoBehaviour {
 			meshCollider.convex=true;
 			meshCollider.sharedMesh=meshFilter.mesh;
 
-			fragment.transform.position=transform.position;
+			fragment.transform.position=new Vector3(ox+x,oy+y,0);
 		}
 	}
 
@@ -78,7 +85,7 @@ public class StaticFractureOnImpact : MonoBehaviour {
 		do{
 			float x=t.origin.x * width/vWidth;
 			float y=t.origin.y * height/vHeight;
-			Vector3 vertex=new Vector3(x,y,thickness);
+			Vector3 vertex=new Vector3(x,thickness,y);
 			vertexList.Add(vertex);
 			uvList.Add(new Vector2(t.origin.x/vWidth,t.origin.y/vHeight));
 			t=t.next;
@@ -89,7 +96,7 @@ public class StaticFractureOnImpact : MonoBehaviour {
 		do{
 			float x=t.origin.x * width/vWidth;
 			float y=t.origin.y * height/vHeight;
-			Vector3 vertex=new Vector3(x,y,-thickness);
+			Vector3 vertex=new Vector3(x,-thickness,y);
 			vertexList.Add(vertex);
 			uvList.Add(new Vector2(t.origin.x/vWidth,t.origin.y/vHeight));
 			t=t.next;
@@ -104,8 +111,8 @@ public class StaticFractureOnImpact : MonoBehaviour {
 		for(int i=1;i<vertices.Length/2-1;i++){
 			//always add group of 3
 			triangles.Add(0);
-			triangles.Add(i);
 			triangles.Add(i+1);
+			triangles.Add(i);
 		}
 			
 		//polyogn on lower side
