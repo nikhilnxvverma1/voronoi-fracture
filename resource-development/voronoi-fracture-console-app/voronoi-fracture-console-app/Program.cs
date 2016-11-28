@@ -34,6 +34,8 @@ namespace FortuneAlgorithm{
 					break;
 				}
 			}
+
+			MainClass.Log("Finished Computing Voronoi Diagram");
 		}
 
 
@@ -136,9 +138,7 @@ namespace FortuneAlgorithm{
 			}
 
 			//nullify this circle event from the triplet arc
-			triplet.left.circleEvent=null;
 			triplet.middle.circleEvent=null;
-			triplet.right.circleEvent=null;
 
 			//find consecutive triplets and if exists, add circle events in the queue
 			Triplet leftSide=beachline.FindTripletOnLeftSide(triplet.left);
@@ -164,17 +164,11 @@ namespace FortuneAlgorithm{
 		public bool Delete(PriorityQueue queue){
 
 			//nullify the references to this circle event in the triplet arcs(only if it is currently set to this)
-			if(triplet.left.circleEvent==this){
-				triplet.left.circleEvent=null;
-			}
 
 			if(triplet.middle.circleEvent==this){
 				triplet.middle.circleEvent=null;
 			}
 
-			if(triplet.right.circleEvent==this){
-				triplet.right.circleEvent=null;
-			}
 			return queue.Delete(this);
 		}
 
@@ -188,28 +182,16 @@ namespace FortuneAlgorithm{
 
 			//remove existing event
 			bool existingCircleEventPresent=false;
-			if(triplet.left.circleEvent!=this && triplet.left.circleEvent!=null){
-				triplet.left.circleEvent.Delete(queue);
-				existingCircleEventPresent=true;
-			}
 
 			if(triplet.middle.circleEvent!=this && triplet.middle.circleEvent!=null){
 				triplet.middle.circleEvent.Delete(queue);
 				existingCircleEventPresent=true;
 			}
 
-			if(triplet.right.circleEvent!=this && triplet.right.circleEvent!=null){
-				triplet.right.circleEvent.Delete(queue);
-				existingCircleEventPresent=true;
-			}
-
 			//set the references
-			triplet.left.circleEvent=this;
 			triplet.middle.circleEvent=this;
-			triplet.right.circleEvent=this;
 
 			return existingCircleEventPresent;
-
 		}
 	}
 
@@ -590,9 +572,11 @@ namespace FortuneAlgorithm{
 		public bool Replace(Node node,Node with){
 			if(left==node){
 				left=with;
+				with.parent=this;
 				return true;
 			}else if(right==node){
 				right=with;
+				with.parent=this;
 				return true;
 			}else{
 				return false;
@@ -815,6 +799,10 @@ namespace FortuneAlgorithm{
 		public Vertex(float x,float y){
 			this.x=x;
 			this.y=y;
+		}
+
+		public override string ToString (){
+			return "("+x+","+y+")";
 		}
 	}
 
