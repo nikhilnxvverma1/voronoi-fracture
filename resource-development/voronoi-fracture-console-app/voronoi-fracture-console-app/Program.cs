@@ -91,6 +91,7 @@ namespace FortuneAlgorithm{
 
 				//insert the new site's arc under the arc above
 				Parabola newParabola=beachline.InsertAndSplit(this,above);
+				AddEdgeForTheNewlyCreatedInternalNode(newParabola,dcel);
 
 				//find consecutive triplets and if exists, add circle events in the queue
 				Triplet leftSide=beachline.FindTripletOnLeftSide(newParabola);
@@ -109,6 +110,20 @@ namespace FortuneAlgorithm{
 				}
 			}
 		}
+
+		/**
+		 * Adding a new parabola by inserting and splitting always leads to 2 new internal nodes being created.
+		 * Each internal node represents a breakpoint but only the top one will trace out an edge with a twin. 
+		 * This method adds them to the DCEL
+		 */ 
+		private void AddEdgeForTheNewlyCreatedInternalNode(Parabola newArc,DoublyConnectedEdgeList dcel){			
+			
+			Edge edgeForSite=new Edge();
+			InternalNode grandParent=newArc.parent.parent;
+			grandParent.edge=edgeForSite;
+			dcel.edgeList.Add(edgeForSite);
+			dcel.edgeList.Add(edgeForSite.twin);
+		}
 	}
 
 	class CircleEvent : Event{
@@ -119,21 +134,30 @@ namespace FortuneAlgorithm{
 			this.radius=radius;
 			this.triplet=triplet;
 		}
+
 		override public void Handle(PriorityQueue queue,BeachLine beachline,DoublyConnectedEdgeList dcel){
 			MainClass.Log("Circle Event: "+this);
-
-			float cx=x;
-			float cy=y+radius;
-
-			// add a vertex in the DCEL and connect it to the dangling edge
-			Vertex newVertex=new Vertex(cx,cy);
-			dcel.vertexList.Add(newVertex);
 
 			//assertion: middle arc will definetely have a grand parent 
 			InternalNode grandParent=triplet.middle.parent.parent;
 
-			//delete the middle arc and mind its parent's children
+			//sibling of the middle arc
 			Node sibling=triplet.middle.parent.OtherChild(triplet.middle);
+
+			//One internal node always gets deleted(middles' parent), and another internal node gets modified because of convergence
+			InternalNode converger=null;
+			bool convergerOnRight;
+			if(sibling.IsLeaf()){
+				converger=grandParent;
+				//check if middle's parent is left child of grandparent
+				convergerOnRight=grandParent.left==triplet.middle.parent;
+			}else{
+				converger=(InternalNode)sibling;
+				//check if sibling is right node of parent
+				convergerOnRight=triplet.middle.parent.right==sibling;
+			}				
+
+			//delete the middle arc and mind its parent's children
 			grandParent.Replace(triplet.middle.parent,sibling);//replace child
 
 			//manage grandparent's site
@@ -141,6 +165,10 @@ namespace FortuneAlgorithm{
 			if(!grandParent.Contains(otherSiteEvent)){
 				grandParent.Replace(triplet.middle.siteEvent,otherSiteEvent);//replace site event (overloaded method)
 			}
+				
+			//using the same but possibly modified converger, connect the dangling edges and start a new edge
+			//from the breakpoint that has been converged at that point
+			ConnectDanglingEdges(converger,convergerOnRight,dcel);
 
 			//nullify this circle event from the triplet arc
 			triplet.middle.circleEvent=null;
@@ -162,6 +190,78 @@ namespace FortuneAlgorithm{
 			}
 		}		
 
+		private Vertex ConnectDanglingEdges(InternalNode converger,bool convergerOnRight,DoublyConnectedEdgeList dcel){
+
+			// add a vertex in the DCEL and connect it to the dangling edge
+			Vertex convergingPoint=new Vertex(x,y+radius);
+			dcel.vertexList.Add(convergingPoint);
+
+			//keep in mind middle arc parent is no longer part of the beach line but still hold refereneces to its parent
+			InternalNode arcParent=triplet.middle.parent;
+
+			//every vertex in voronoi diagram is either the topmost or bottommost vertex of some face
+			if(arcParent.site1.x>arcParent.site2.x){ //top vertex of some face
+
+				//old existing edge of converger's parent if present should be connected
+				Edge terminatedEdge=converger.parent.edge;
+				if(terminatedEdge!=null){
+					
+					//as a double edge, the orignal will be used on the left side 
+					terminatedEdge.origin=convergingPoint;
+					triplet.left.siteEvent.face.AppendToStartList(terminatedEdge);
+
+					//and its twin will be used for the right side
+					triplet.right.siteEvent.face.PrependToEndList(terminatedEdge.twin,convergingPoint);
+
+				}
+
+				//get edge of grand parent 
+				Edge existingEdge=converger.edge;
+
+				//a new divergent edge(dangling) will be added to the parent of the convergent
+				Edge divergent=new Edge();
+				dcel.edgeList.Add(divergent);
+				dcel.edgeList.Add(divergent.twin);
+				converger.parent.edge=divergent;
+
+				if(convergerOnRight){//existing edge right of divergent edge
+					triplet.middle.siteEvent.face.CreateStartAndEndListAt(convergingPoint,existingEdge,divergent);
+
+					//add the twin of the divergent to the start list of the left site's face
+					divergent.twin.origin=convergingPoint;
+					triplet.left.siteEvent.face.AppendToStartList(divergent.twin);
+				}else{//existing edge left of divergent edge
+					triplet.middle.siteEvent.face.CreateStartAndEndListAt(convergingPoint,divergent,existingEdge);
+
+					//prepend the twin of the divergent to the start list of the right site's face
+					triplet.right.siteEvent.face.PrependToEndList(divergent.twin,convergingPoint);
+				}
+
+			}else{ //bottom vertex of some face
+				
+				triplet.middle.siteEvent.face.ConnectStartAndEndListsThrough(convergingPoint);
+
+				//a new divergent edge(dangling) will be added to the convergent
+				Edge convergent=new Edge();
+				convergent.origin=convergingPoint;
+				dcel.edgeList.Add(convergent);
+				dcel.edgeList.Add(convergent.twin);
+
+				converger.edge=convergent;
+
+				//as a double edge, the original gets used for the left side and its twin for the right
+				triplet.left.siteEvent.face.AppendToStartList(convergent);
+				triplet.right.siteEvent.face.PrependToEndList(convergent,convergingPoint);
+
+			}
+				
+			return convergingPoint;
+		}
+
+		private void StartNewEdgeAtConvergence(Vertex convergingPoint,DoublyConnectedEdgeList dcel){
+			
+		}
+			
 		/**
 		 * Removes the circle event from priority queue and removes its references from the arc(only if they were set).
 		 * Returns true if deleted from queue, false otherwise (in case it wasn't already in queue)
@@ -523,7 +623,6 @@ namespace FortuneAlgorithm{
 		public InternalNode(SiteEvent site1,SiteEvent site2,InternalNode parent):base(parent){
 			this.site1=site1;
 			this.site2=site2;
-			this.edge=new Edge(this);
 		}
 
 		public override bool IsLeaf (){			
@@ -826,7 +925,9 @@ namespace FortuneAlgorithm{
 
 	class Face{
 		public SiteEvent siteEvent;
-		public Edge startingEdge;
+		private Edge start;
+		private Edge startTerminal;
+		private Edge endTerminal;
 
 		public Face(SiteEvent siteEvent){
 			this.siteEvent=siteEvent;
@@ -834,6 +935,51 @@ namespace FortuneAlgorithm{
 
 		public override string ToString (){
 			return "F"+siteEvent;
+		}
+
+		public Edge GetStartingEdge(){
+			return start;
+		}
+
+		public void AppendToStartList(Edge edge){
+			edge.face=this;
+			edge.next=null;
+			edge.previous=null;
+			if(startTerminal==null){
+				start=edge;
+			}else{
+				startTerminal.next=edge;
+				edge.previous=startTerminal;
+			}
+			startTerminal=edge;
+		}
+
+		public void PrependToEndList(Edge edge,Vertex originOfDanglingLast){
+			edge.face=this;
+			edge.next=null;
+			edge.previous=null;
+			if(endTerminal==null){
+				endTerminal=edge;
+			}else{
+				endTerminal.origin=originOfDanglingLast;
+				endTerminal.previous=edge;
+				edge.next=endTerminal;
+			}
+			endTerminal=edge;
+		}
+
+		public void CreateStartAndEndListAt(Vertex origin,Edge startingEdge,Edge endingEdge){
+			startingEdge.origin=origin;
+			this.start=startingEdge;
+			this.startTerminal=startingEdge;
+			this.endTerminal=endingEdge;
+			endingEdge.next=startingEdge;
+			startingEdge.previous=endingEdge;
+		}
+
+		public void ConnectStartAndEndListsThrough(Vertex originOfDanglingLast){
+			endTerminal.origin=originOfDanglingLast;
+			startTerminal.next=endTerminal;
 		}
 	}
 
@@ -845,19 +991,25 @@ namespace FortuneAlgorithm{
 		public Face face;
 
 		/**
-		 * Creates an edge with a face. This constructor is used to create the twin edge internally
+		 * Creates an edge with a twin. Intentionally private so that its only used internally 
+		 * and doesn't become recursive
 		 */
-		private Edge(Face face){
-			this.face=face;
+		private Edge(Edge twin){
+			this.twin=twin;
 		}
+			
+		public Edge(){			
+			this.twin=new Edge(this);
+		}			
 
-		/**
-		 * Creates a new edge with site1's face being the face for this edge and site2's face as the face 
-		 * for the internally created twin edge. Both this and twin edge should get added to the DCEL.
-		 */
-		public Edge(InternalNode node){
-			this.face=node.site1.face;
-			this.twin=new Edge(node.site2.face);
+		public Edge ForFace(Face face){
+			if(this.face==face){
+				return this;
+			}else if(this.twin.face==face){
+				return twin;
+			}else{
+				return null;
+			}
 		}
 
 		public override string ToString (){
