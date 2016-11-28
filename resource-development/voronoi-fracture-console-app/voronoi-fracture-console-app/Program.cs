@@ -200,7 +200,7 @@ namespace FortuneAlgorithm{
 			InternalNode arcParent=triplet.middle.parent;
 
 			//every vertex in voronoi diagram is either the topmost or bottommost vertex of some face
-			if(arcParent.site1.x>arcParent.site2.x){ //top vertex of some face
+			if(convergingPoint.y>triplet.middle.siteEvent.y){ //top vertex of some face
 
 				//old existing edge of converger's parent if present should be connected
 				Edge terminatedEdge=converger.parent.edge;
