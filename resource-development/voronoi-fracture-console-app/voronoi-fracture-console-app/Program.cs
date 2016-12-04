@@ -6,7 +6,7 @@ namespace FortuneAlgorithm{
 
 
 	class MainClass{
-		
+
 		public static void Main (string[] args){
 
 			//input
@@ -52,7 +52,7 @@ namespace FortuneAlgorithm{
 		}
 	}
 
-	abstract class Event{
+	public abstract class Event{
 		public float x;
 		public float y;
 		public int index;
@@ -69,12 +69,12 @@ namespace FortuneAlgorithm{
 		}
 	}
 
-	class SiteEvent :Event{
+	public class SiteEvent :Event{
 
 		public Face face;
 
 		public SiteEvent(float x,float y):base(x,y){
-			
+
 		}
 
 		override public void Handle(PriorityQueue queue,BeachLine beachline,DoublyConnectedEdgeList dcel){
@@ -117,7 +117,7 @@ namespace FortuneAlgorithm{
 		 * This method adds them to the DCEL
 		 */ 
 		private void AddEdgeForTheNewlyCreatedInternalNode(Parabola newArc,DoublyConnectedEdgeList dcel){			
-			
+
 			Edge edgeForSite=new Edge();
 			InternalNode grandParent=newArc.parent.parent;
 			grandParent.edge=edgeForSite;
@@ -126,7 +126,7 @@ namespace FortuneAlgorithm{
 		}
 	}
 
-	class CircleEvent : Event{
+	public class CircleEvent : Event{
 		float radius;
 		public Triplet triplet;	
 
@@ -165,7 +165,7 @@ namespace FortuneAlgorithm{
 			if(!grandParent.Contains(otherSiteEvent)){
 				grandParent.Replace(triplet.middle.siteEvent,otherSiteEvent);//replace site event (overloaded method)
 			}
-				
+
 			//using the same but possibly modified converger, connect the dangling edges and start a new edge
 			//from the breakpoint that has been converged at that point
 			ConnectDanglingEdges(converger,convergerOnRight,dcel);
@@ -196,16 +196,13 @@ namespace FortuneAlgorithm{
 			Vertex convergingPoint=new Vertex(x,y+radius);
 			dcel.vertexList.Add(convergingPoint);
 
-			//keep in mind middle arc parent is no longer part of the beach line but still hold refereneces to its parent
-			InternalNode arcParent=triplet.middle.parent;
-
 			//every vertex in voronoi diagram is either the topmost or bottommost vertex of some face
 			if(convergingPoint.y>triplet.middle.siteEvent.y){ //top vertex of some face
 
 				//old existing edge of converger's parent if present should be connected
 				Edge terminatedEdge=converger.parent.edge;
 				if(terminatedEdge!=null){
-					
+
 					//as a double edge, the orignal will be used on the left side 
 					terminatedEdge.origin=convergingPoint;
 					triplet.left.siteEvent.face.AppendToStartList(terminatedEdge);
@@ -238,7 +235,7 @@ namespace FortuneAlgorithm{
 				}
 
 			}else{ //bottom vertex of some face
-				
+
 				triplet.middle.siteEvent.face.ConnectStartAndEndListsThrough(convergingPoint);
 
 				//a new divergent edge(dangling) will be added to the convergent
@@ -254,12 +251,18 @@ namespace FortuneAlgorithm{
 				triplet.right.siteEvent.face.PrependToEndList(convergent,convergingPoint);
 
 			}
-				
+
 			return convergingPoint;
 		}
 
-		private void StartNewEdgeAtConvergence(Vertex convergingPoint,DoublyConnectedEdgeList dcel){
-			
+		private float GetXOfParabolaIntersectionGivenY(SiteEvent site1,SiteEvent site2, float y){
+			//using the equation of the parabola we find the x by substituting out the directrix
+			return (site2.x*site2.x - site1.x*site1.x + site2.y*site2.y - site1.y*site1.y - 2*site2.y*y + 2*site1.y*y)/(2*(site1.x - site2.x));
+		}
+
+		private float GetYOfParabolaIntersectionGivenX(SiteEvent site1,SiteEvent site2, float x){
+			//using the equation of the parabola we find the y by substituting out the directrix
+			return (site1.x*site1.x - site2.x*site2.x + site1.y*site1.y - site2.y*site2.y + 2*site2.x*x - 2*site1.x*x)/(2*(site2.y - site1.y));
 		}
 			
 		/**
@@ -300,7 +303,7 @@ namespace FortuneAlgorithm{
 		}
 	}
 
-	class PriorityQueue{
+	public class PriorityQueue{
 
 		ArrayList heap=new ArrayList();
 
@@ -452,7 +455,7 @@ namespace FortuneAlgorithm{
 		}
 	}
 
-	abstract class Node{
+	public abstract class Node{
 		public InternalNode parent;
 
 		public Node(InternalNode p){
@@ -466,7 +469,7 @@ namespace FortuneAlgorithm{
 		abstract public Node Traverse(float x,float y);
 	}
 
-	class Parabola:Node{
+	public class Parabola:Node{
 		public SiteEvent siteEvent;
 		public CircleEvent circleEvent;
 
@@ -487,7 +490,7 @@ namespace FortuneAlgorithm{
 		}
 	}
 
-	class Triplet{
+	public class Triplet{
 		public Parabola left;
 		public Parabola middle;
 		public Parabola right;
@@ -508,11 +511,11 @@ namespace FortuneAlgorithm{
 			//its possible that the three parabola nodes considered are not consecutive because one outlier's(left or right) site event 
 			//is situated over on the other side, in which case, the the middle arc is not formed "at" the beachline but within it.
 			//For this purpose we make a simple check. if left-> middle-> right is counter clockwise, then we return null.
-//			if ((lSite.y-cSite.y)*(rSite.x-cSite.x)<=(lSite.x-cSite.x)*(rSite.y-cSite.y)) {return;}
+			//			if ((lSite.y-cSite.y)*(rSite.x-cSite.x)<=(lSite.x-cSite.x)*(rSite.y-cSite.y)) {return;}
 			if((left.siteEvent.y-middle.siteEvent.y)*(right.siteEvent.x-middle.siteEvent.x)>=(left.siteEvent.x-middle.siteEvent.x)*(right.siteEvent.y-middle.siteEvent.y)){
 				return null;
 			}
-			
+
 			//get the equations of the two perpendicular bisectors
 			PerpendicularBisector p1=new PerpendicularBisector(left.siteEvent.x,left.siteEvent.y,middle.siteEvent.x,middle.siteEvent.y);
 			PerpendicularBisector p2=new PerpendicularBisector(right.siteEvent.x,right.siteEvent.y,middle.siteEvent.x,middle.siteEvent.y);
@@ -589,7 +592,7 @@ namespace FortuneAlgorithm{
 						y=m*x+c;
 					}
 				}
-					
+
 				return new Point(x,y);
 			}
 		}
@@ -610,10 +613,10 @@ namespace FortuneAlgorithm{
 		public override string ToString (){
 			return left+" "+middle+" "+right;
 		}
-			
+
 	}
 
-	class InternalNode:Node{
+	public class InternalNode:Node{
 		public SiteEvent site1;
 		public SiteEvent site2;
 		public Edge edge;
@@ -769,10 +772,10 @@ namespace FortuneAlgorithm{
 				return "("+x+","+y+")";
 			}
 		}
-			
+
 	}
 
-	class BeachLine{
+	public class BeachLine{
 
 		Node root;
 
@@ -850,7 +853,7 @@ namespace FortuneAlgorithm{
 		}
 
 		private Parabola FindLeftSibling(Parabola parabola){
-			
+
 			Node node=parabola;
 
 			//look for the parent that has a left child
@@ -910,9 +913,10 @@ namespace FortuneAlgorithm{
 		}
 	}
 
-	class Vertex{
+	public class Vertex{
 		public float x;
 		public float y;
+		public bool isLyingOnBounds=false;
 		public Vertex(float x,float y){
 			this.x=x;
 			this.y=y;
@@ -923,9 +927,12 @@ namespace FortuneAlgorithm{
 		}
 	}
 
-	class Face{
+	public class Face{
 		public SiteEvent siteEvent;
 		private Edge start;
+		private Edge last;
+		private Edge forwardList;
+		private Edge backwardList;
 		private Edge startTerminal;
 		private Edge endTerminal;
 
@@ -945,8 +952,8 @@ namespace FortuneAlgorithm{
 			edge.face=this;
 			edge.next=null;
 			edge.previous=null;
-			if(startTerminal==null){
-				start=edge;
+			if(forwardList==null){
+				forwardList=edge;
 			}else{
 				startTerminal.next=edge;
 				edge.previous=startTerminal;
@@ -981,9 +988,24 @@ namespace FortuneAlgorithm{
 			endTerminal.origin=originOfDanglingLast;
 			startTerminal.next=endTerminal;
 		}
+
+		/**
+		 * Deprecated: only use for appending a cyclic list of edges
+		 */
+		public void AddEdge(Edge edge){
+			if(start==null){
+				start=edge;
+				last=edge;
+			}else{
+				last.next=edge;
+				edge.previous=last;
+				last=edge;
+			}
+			last.next=start;
+		}
 	}
 
-	class Edge{
+	public class Edge{
 		public Vertex origin;
 		public Edge twin;
 		public Edge next;
@@ -997,10 +1019,15 @@ namespace FortuneAlgorithm{
 		private Edge(Edge twin){
 			this.twin=twin;
 		}
-			
+
 		public Edge(){			
 			this.twin=new Edge(this);
 		}			
+
+		public Edge(Vertex origin){
+			this.origin=origin;
+			this.twin=new Edge(this);
+		}
 
 		public Edge ForFace(Face face){
 			if(this.face==face){
@@ -1017,7 +1044,7 @@ namespace FortuneAlgorithm{
 		}
 	}
 
-	class DoublyConnectedEdgeList{
+	public class DoublyConnectedEdgeList{
 		//bounding box lower left and upper right coordinates
 		public float lx;
 		public float ly;
