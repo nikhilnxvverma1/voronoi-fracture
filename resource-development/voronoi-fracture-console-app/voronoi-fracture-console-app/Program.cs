@@ -199,12 +199,8 @@ namespace FortuneAlgorithm{
 			//every vertex in voronoi diagram is either the topmost or bottommost vertex of some face
 			if(convergingPoint.y>triplet.middle.siteEvent.y){ //top vertex of some face
 
-				//to find the terminated edge(edge that ends on this vertex), 
-				//keep going up from the middle's parent until you reach a (left,right) breakpoint
-				InternalNode terminatedEdgeNode=triplet.middle.parent;			
-				while(terminatedEdgeNode!=null && terminatedEdgeNode.IsBreakpointBetween(triplet.left,triplet.right)){
-					terminatedEdgeNode=terminatedEdgeNode.parent;
-				}
+				//to find the terminated edge(edge that ends on this vertex)
+				InternalNode terminatedEdgeNode=NodeForBreakpointBetween(triplet.left.siteEvent,triplet.right.siteEvent,triplet.middle.parent);					
 
 				//old existing edge of converger's parent if present should be connected
 				Edge terminatedEdge=terminatedEdgeNode.edge;
@@ -214,8 +210,8 @@ namespace FortuneAlgorithm{
 					if(terminatedEdge.origin==null){
 						
 						//get the clipped point
-						float y=dcel.uy;//upper bounds of the bounding box
-						float x=GetXOfParabolaIntersectionGivenY(triplet.left,triplet.right,y);
+						float y=dcel.uy;//upper bounds of the bounding box(in our case sweepline is going from top to bottom)
+						float x=dcel.GetXOfParabolaIntersectionGivenY(triplet.left.siteEvent,triplet.right.siteEvent,y);
 						Vertex clippedPoint=new Vertex(x,y,true);
 
 						//as a double edge, the orignal will be used on the left side 
@@ -241,51 +237,99 @@ namespace FortuneAlgorithm{
 				dcel.edgeList.Add(divergent.twin);
 				converger.parent.edge=divergent;
 
-				//TOOD handling clipping
-				if(convergerOnRight){//existing edge right of divergent edge
-					triplet.middle.siteEvent.face.CreateForwardAndBackwardListsAt(convergingPoint,divergent,existingEdge);
+				if(convergerOnRight){//existing edge right of divergent edge's twin
+					triplet.middle.siteEvent.face.CreateForwardAndBackwardListsAt(convergingPoint,divergent.twin,existingEdge);
 
-					//add the twin of the divergent to the forward list of the left site's face
-					divergent.twin.origin=convergingPoint;
-					triplet.left.siteEvent.face.AppendToForwardList(divergent.twin);
-				}else{//existing edge left of divergent edge
-					triplet.middle.siteEvent.face.CreateForwardAndBackwardListsAt(convergingPoint,existingEdge,divergent);
+					//add the original divergent to the forward list of the left site's face
+					divergent.origin=convergingPoint;
+					triplet.left.siteEvent.face.AppendToForwardList(divergent);
 
-					//prepend the twin of the divergent to the start list of the right site's face
+					//prepend the twin of the existing edge(which is another divergent) to the right face's backward list
+					triplet.right.siteEvent.face.PrependToBackwardList(existingEdge.twin,convergingPoint);
+				}else{//existing edge left of divergent edge					
+
+					triplet.middle.siteEvent.face.CreateForwardAndBackwardListsAt(convergingPoint,existingEdge.twin,divergent);
+
+					//add the original divergent to the forward list of the left site's face
+					existingEdge.origin=convergingPoint;
+					triplet.left.siteEvent.face.AppendToForwardList(existingEdge);
+
+					//prepend the twin of the divergent to the right face's backward list
 					triplet.right.siteEvent.face.PrependToBackwardList(divergent.twin,convergingPoint);
 				}
 
 			}else{ //bottom vertex of some face
 
-				triplet.middle.siteEvent.face.ConnectStartAndEndListsThrough(convergingPoint);
+				//if forward list hasn't started, instantiate and clip with upper bounds 
+				if(triplet.middle.siteEvent.face.ForwardListNotStarted()){
+					ClipEdgeWithUpperBoundsBetween(triplet.middle,triplet.right,dcel);
+				}
+
+				//if backward list hasn't started, instantiate and  clip with upper bounds 
+				if(triplet.middle.siteEvent.face.BackwardListNotStarted()){
+					ClipEdgeWithUpperBoundsBetween(triplet.left,triplet.middle,dcel);
+				}
+
+				triplet.middle.siteEvent.face.ConnectBackwardAndForwardListsAt(convergingPoint);
 
 				//a new divergent edge(dangling) will be added to the convergent
 				Edge convergent=new Edge();
-				convergent.origin=convergingPoint;
+				convergent.origin=convergingPoint;//TODO rethink this, also mind the clipping point with the left bound
 				dcel.edgeList.Add(convergent);
 				dcel.edgeList.Add(convergent.twin);
 
 				converger.edge=convergent;
 
+				//TODO check for clips against the left or right bounds
+				//if the coverging edges are getting clipped, 
+				//then their continuation(from forward/backward) is also getting clipped. 
+				//so add a pseudo edge
+
 				//as a double edge, the original gets used for the left side and its twin for the right
-				triplet.left.siteEvent.face.AppendToForwardList(convergent);
-				triplet.right.siteEvent.face.PrependToBackwardList(convergent,convergingPoint);
+				triplet.left.siteEvent.face.AppendToForwardList(convergent);//TODO wrong
+				triplet.right.siteEvent.face.PrependToBackwardList(convergent.twin,convergingPoint);
 
 			}
 
 			return convergingPoint;
 		}
 
-		public static float GetXOfParabolaIntersectionGivenY(SiteEvent site1,SiteEvent site2, float y){
-			//using the equation of the parabola we find the x by substituting out the directrix
-			return (site2.x*site2.x - site1.x*site1.x + site2.y*site2.y - site1.y*site1.y - 2*site2.y*y + 2*site1.y*y)/(2*(site2.x - site1.x));
-		}
+		private void ClipEdgeWithUpperBoundsBetween(Parabola leftSide,Parabola rightSide,DoublyConnectedEdgeList dcel){
+			//find the clipped point with the upper bounds
+			float y = dcel.uy;
+			float x = dcel.GetXOfParabolaIntersectionGivenY(leftSide.siteEvent,rightSide.siteEvent,y);
+			Vertex clippedPoint=new Vertex(x,y,true);
 
-		public static float GetYOfParabolaIntersectionGivenX(SiteEvent site1,SiteEvent site2, float x){
-			//using the equation of the parabola we find the y by substituting out the directrix
-			return (site1.x*site1.x - site2.x*site2.x + site1.y*site1.y - site2.y*site2.y + 2*site2.x*x - 2*site1.x*x)/(2*(site1.y - site2.y));
+			//get the edge whose endpoint this breakpoint is(create if needed)
+			InternalNode breakpoint=NodeForBreakpointBetween(leftSide.siteEvent,rightSide.siteEvent,triplet.middle.parent);
+			Edge terminatedEdge=null;
+			if(breakpoint.edge==null){
+				terminatedEdge=new Edge();
+				dcel.edgeList.Add(terminatedEdge);
+				dcel.edgeList.Add(terminatedEdge.twin);
+				breakpoint.edge=terminatedEdge;
+			}else{
+				terminatedEdge=breakpoint.edge;
+			}
+
+			//set the clipped point as the origin of the left face(middle in this case) 
+			terminatedEdge.origin=clippedPoint;
+
+			//add to forward and backward lists of left and right sides respectively
+			leftSide.siteEvent.face.AppendToForwardList(terminatedEdge);
+			rightSide.siteEvent.face.PrependToBackwardList(terminatedEdge.twin,terminatedEdge.origin);
 		}
 			
+		private InternalNode NodeForBreakpointBetween(SiteEvent site1,SiteEvent site2,InternalNode fromParent){
+			
+			//keep going up from the given parent until you reach a (left,right) breakpoint
+			InternalNode breakpointNode=fromParent;			
+			while(breakpointNode!=null && breakpointNode.IsBreakpointBetween(triplet.left.siteEvent,triplet.right.siteEvent)){
+				breakpointNode=breakpointNode.parent;
+			}
+			return breakpointNode;
+		}
+
 		/**
 		 * Removes the circle event from priority queue and removes its references from the arc(only if they were set).
 		 * Returns true if deleted from queue, false otherwise (in case it wasn't already in queue)
@@ -949,8 +993,7 @@ namespace FortuneAlgorithm{
 			this.isLyingOnBounds=isLyingOnBounds;
 		}
 
-		public Vertex(float x,float y){
-			this(x,y,false);
+		public Vertex(float x,float y):this(x,y,false){			
 		}
 
 		public override string ToString (){
@@ -996,8 +1039,8 @@ namespace FortuneAlgorithm{
 			edge.face=this;
 			edge.next=null;
 			edge.previous=null;
-			if(endTerminal==null){
-				endTerminal=edge;
+			if(backwardList==null){
+				backwardList=edge;
 			}else{
 				endTerminal.origin=originOfDanglingLast;
 				endTerminal.previous=edge;
@@ -1007,17 +1050,32 @@ namespace FortuneAlgorithm{
 		}
 
 		public void CreateForwardAndBackwardListsAt(Vertex origin,Edge endingEdge,Edge startingEdge){
+
 			startingEdge.origin=origin;
+
 			this.start=startingEdge;
+			this.forwardList=startingEdge;
 			this.startTerminal=startingEdge;
+
+			this.last=endingEdge;
+			this.backwardList=endingEdge;
 			this.endTerminal=endingEdge;
+
 			endingEdge.next=startingEdge;
 			startingEdge.previous=endingEdge;
 		}
 
-		public void ConnectStartAndEndListsThrough(Vertex originOfDanglingLast){
+		public void ConnectBackwardAndForwardListsAt(Vertex originOfDanglingLast){
 			endTerminal.origin=originOfDanglingLast;
 			startTerminal.next=endTerminal;
+		}
+
+		public bool ForwardListNotStarted(){
+			return forwardList==null;
+		}
+
+		public bool BackwardListNotStarted(){
+			return backwardList==null;
 		}
 
 		/**
@@ -1094,6 +1152,16 @@ namespace FortuneAlgorithm{
 
 		public override string ToString (){
 			return "V: "+vertexList.Count+" E: "+edgeList.Count+" F: "+faceList.Count;
+		}
+
+		public float GetXOfParabolaIntersectionGivenY(SiteEvent site1,SiteEvent site2, float y){
+			//using the equation of the parabola we find the x by substituting out the directrix
+			return (site2.x*site2.x - site1.x*site1.x + site2.y*site2.y - site1.y*site1.y - 2*site2.y*y + 2*site1.y*y)/(2*(site2.x - site1.x));
+		}
+
+		public float GetYOfParabolaIntersectionGivenX(SiteEvent site1,SiteEvent site2, float x){
+			//using the equation of the parabola we find the y by substituting out the directrix
+			return (site1.x*site1.x - site2.x*site2.x + site1.y*site1.y - site2.y*site2.y + 2*site2.x*x - 2*site1.x*x)/(2*(site1.y - site2.y));
 		}
 	}
 }
