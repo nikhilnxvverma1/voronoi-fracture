@@ -194,8 +194,50 @@ namespace FortuneAlgorithm{
 
 			// add a vertex in the DCEL and connect it to the dangling edge
 			Vertex convergingPoint=new Vertex(x,y+radius);
-			dcel.vertexList.Add(convergingPoint);
 
+			if(convergingPoint.y>dcel.uy){//above upper bound
+				if(convergingPoint.x<dcel.lx){//before left bound
+					//TODO easy
+				}else if(convergingPoint.x>dcel.ux){//after right bound
+					//TODO easy
+				}else{//between left and right bounds
+					//TODO easy
+				}
+
+			}else if(convergingPoint.y<dcel.ly){//below lower bound
+				if(convergingPoint.x<dcel.lx){//before left bound
+					//TODO easy
+				}else if(convergingPoint.x>dcel.ux){//after right bound
+					//TODO easy
+				}else{//between left and right bounds
+					//TODO easy
+				}
+			}else{
+				if(convergingPoint.x<dcel.lx){//before left bound
+					//for top vertex
+					//TODO clip the incident edge
+					//TODO dismiss the edge branging to the the left
+					//TODO clip the edge branching ot the right
+					//for bottom vertex
+					//TODO clip the latest forward edge(after connecting to the converging point)
+					//TODO find the adjacent site to the latest backward edge and use that to clip with left bounds 
+					//TODO for the new convergent edge created, dont clip with left bounds (that will be handled in another case)
+				}else if(convergingPoint.x>dcel.ux){//after right bound
+					//for top vertex
+					//TODO clip the incident edge
+					//TODO dismiss the edge branging to the the right
+					//TODO clip the edge branching ot the left
+					//for bottom vertex, 
+					//TODO clip the latest backward edge(after connecting to the converging point)
+					//TODO find the adjacent site to the latest forward edge and use that to clip with right bounds 
+					//TODO for the new convergent edge created, dont clip with right bounds (that will be handled in another case)
+				}else{//between left and right bounds
+					//TODO regular case
+				}
+			}
+				
+			dcel.vertexList.Add(convergingPoint);
+					
 			//every vertex in voronoi diagram is either the topmost or bottommost vertex of some face
 			if(convergingPoint.y>triplet.middle.siteEvent.y){ //top vertex of some face
 
