@@ -212,6 +212,15 @@ namespace FortuneAlgorithm{
 						//get the clipped point
 						float y=dcel.uy;//upper bounds of the bounding box(in our case sweepline is going from top to bottom)
 						float x=dcel.GetXOfParabolaIntersectionGivenY(triplet.left.siteEvent,triplet.right.siteEvent,y);
+
+						if(x<dcel.lx){//check if x is before the left bound							
+							x=dcel.lx;//left bounds of the  bounding box(in our case sweepline is going from top to bottom)
+							y=dcel.GetYOfParabolaIntersectionGivenX(triplet.left.siteEvent,triplet.right.siteEvent,x);
+
+						}else if(x>dcel.ux){//check if x is after the right bound
+							x=dcel.ux;//right bounds of the  bounding box(in our case sweepline is going from top to bottom)
+							y=dcel.GetYOfParabolaIntersectionGivenX(triplet.left.siteEvent,triplet.right.siteEvent,x);
+						}
 						Vertex clippedPoint=new Vertex(x,y,true);
 
 						//as a double edge, the orignal will be used on the left side 
@@ -219,6 +228,7 @@ namespace FortuneAlgorithm{
 
 						//Since we set origin on the edge of left face, we will append to forward list
 						triplet.left.siteEvent.face.AppendToForwardList(terminatedEdge);
+
 					}
 
 					//for the right side, we will simple prepend the twin now by supplying the clipped point as the 
@@ -260,21 +270,29 @@ namespace FortuneAlgorithm{
 
 			}else{ //bottom vertex of some face
 
+				Edge leftEdge,rightEdge;
+
 				//if forward list hasn't started, instantiate and clip with upper bounds 
 				if(triplet.middle.siteEvent.face.ForwardListNotStarted()){
-					ClipEdgeWithUpperBoundsBetween(triplet.middle,triplet.right,dcel);
+					//this happens when the middle face is situated near the top bounds
+					rightEdge=ClipEdgeWithUpperBoundsBetween(triplet.middle,triplet.right,dcel);
+				}else{
+					rightEdge=triplet.middle.siteEvent.face.GetForwardTerminal();
 				}
 
 				//if backward list hasn't started, instantiate and  clip with upper bounds 
 				if(triplet.middle.siteEvent.face.BackwardListNotStarted()){
-					ClipEdgeWithUpperBoundsBetween(triplet.left,triplet.middle,dcel);
+					//this happens when the middle face is situated near the top bounds
+					leftEdge=ClipEdgeWithUpperBoundsBetween(triplet.left,triplet.middle,dcel);
+				}else{
+					leftEdge=triplet.middle.siteEvent.face.GetBackwardTerminal();
 				}
 
 				triplet.middle.siteEvent.face.ConnectBackwardAndForwardListsAt(convergingPoint);
 
 				//a new divergent edge(dangling) will be added to the convergent
 				Edge convergent=new Edge();
-				convergent.origin=convergingPoint;//TODO rethink this, also mind the clipping point with the left bound
+				convergent.origin=convergingPoint;
 				dcel.edgeList.Add(convergent);
 				dcel.edgeList.Add(convergent.twin);
 
@@ -286,7 +304,7 @@ namespace FortuneAlgorithm{
 				//so add a pseudo edge
 
 				//as a double edge, the original gets used for the left side and its twin for the right
-				triplet.left.siteEvent.face.AppendToForwardList(convergent);//TODO wrong
+				triplet.left.siteEvent.face.AppendToForwardList(convergent);
 				triplet.right.siteEvent.face.PrependToBackwardList(convergent.twin,convergingPoint);
 
 			}
@@ -294,7 +312,7 @@ namespace FortuneAlgorithm{
 			return convergingPoint;
 		}
 
-		private void ClipEdgeWithUpperBoundsBetween(Parabola leftSide,Parabola rightSide,DoublyConnectedEdgeList dcel){
+		private Edge ClipEdgeWithUpperBoundsBetween(Parabola leftSide,Parabola rightSide,DoublyConnectedEdgeList dcel){
 			//find the clipped point with the upper bounds
 			float y = dcel.uy;
 			float x = dcel.GetXOfParabolaIntersectionGivenY(leftSide.siteEvent,rightSide.siteEvent,y);
@@ -318,6 +336,8 @@ namespace FortuneAlgorithm{
 			//add to forward and backward lists of left and right sides respectively
 			leftSide.siteEvent.face.AppendToForwardList(terminatedEdge);
 			rightSide.siteEvent.face.PrependToBackwardList(terminatedEdge.twin,terminatedEdge.origin);
+
+			return terminatedEdge;
 		}
 			
 		private InternalNode NodeForBreakpointBetween(SiteEvent site1,SiteEvent site2,InternalNode fromParent){
@@ -1020,6 +1040,14 @@ namespace FortuneAlgorithm{
 
 		public Edge GetStartingEdge(){
 			return start;
+		}
+
+		public Edge GetForwardTerminal(){
+			return startTerminal;
+		}
+
+		public Edge GetBackwardTerminal(){
+			return endTerminal;
 		}
 
 		public void AppendToForwardList(Edge edge){
