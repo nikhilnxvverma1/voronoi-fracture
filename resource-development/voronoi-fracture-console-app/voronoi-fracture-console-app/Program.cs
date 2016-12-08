@@ -197,18 +197,18 @@ namespace FortuneAlgorithm{
 
 			if(convergingPoint.y>dcel.uy){//above upper bound
 				if(convergingPoint.x<dcel.lx){//before left bound
-					//TODO easy
+					ClipWithTopLeftCorner(dcel);
 				}else if(convergingPoint.x>dcel.ux){//after right bound
-					//TODO easy
+					ClipWithTopRightCorner(dcel);
 				}else{//between left and right bounds
 					//TODO easy
 				}
 
 			}else if(convergingPoint.y<dcel.ly){//below lower bound
 				if(convergingPoint.x<dcel.lx){//before left bound
-					//TODO easy
+					ClipWithBottomLeftCorner(dcel);
 				}else if(convergingPoint.x>dcel.ux){//after right bound
-					//TODO easy
+					ClipWithBottomRightCorner(dcel);
 				}else{//between left and right bounds
 					//TODO easy
 				}
@@ -239,7 +239,7 @@ namespace FortuneAlgorithm{
 			dcel.vertexList.Add(convergingPoint);
 					
 			//every vertex in voronoi diagram is either the topmost or bottommost vertex of some face
-			if(convergingPoint.y>triplet.middle.siteEvent.y){ //top vertex of some face
+			if(convergingPoint.y>triplet.middle.siteEvent.y){ //top vertex of middle face
 
 				//to find the terminated edge(edge that ends on this vertex)
 				InternalNode terminatedEdgeNode=NodeForBreakpointBetween(triplet.left.siteEvent,triplet.right.siteEvent,triplet.middle.parent);					
@@ -310,7 +310,7 @@ namespace FortuneAlgorithm{
 					triplet.right.siteEvent.face.PrependToBackwardList(divergent.twin,convergingPoint);
 				}
 
-			}else{ //bottom vertex of some face
+			}else{ //bottom vertex of middle face
 
 				Edge leftEdge,rightEdge;
 
@@ -354,6 +354,203 @@ namespace FortuneAlgorithm{
 			return convergingPoint;
 		}
 
+		private void ClipWithLeftBounds(Vertex outside,InternalNode converger,bool convergerOnRight,DoublyConnectedEdgeList dcel){
+			if(outside.y>triplet.middle.siteEvent.y){//top vertex of middle face
+
+				//find the clipping with left bounds between left and middle
+				float x=dcel.lx;
+				float y=dcel.GetYOfParabolaIntersectionGivenX(triplet.left.siteEvent,triplet.middle.siteEvent,x);
+				Vertex leftClipBwLeftMiddle=new Vertex(x,y,true);
+				dcel.vertexList.Add(leftClipBwLeftMiddle);
+
+				//find the clipping with left bounds between middle and right
+				x=dcel.lx;
+				y=dcel.GetYOfParabolaIntersectionGivenX(triplet.middle.siteEvent,triplet.right.siteEvent,x);
+				Vertex leftClipBwMiddleRight=new Vertex(x,y,true);
+				dcel.vertexList.Add(leftClipBwMiddleRight);
+
+				//create  a pseudo edge for the clipped section
+				Edge pseudoEdge=new Edge(leftClipBwMiddleRight,true);//middle-right will always be the upper on the left bound
+				dcel.edgeList.Add(pseudoEdge);
+
+				//get edge of grand parent 
+				Edge existingEdge=converger.edge;
+
+				//create the lists for middle face and set the existing edge's twin on the right face after setting its clipping point
+				triplet.middle.siteEvent.face.CreateForwardAndBackwardListsAt(leftClipBwMiddleRight,pseudoEdge,existingEdge);
+				triplet.right.siteEvent.face.PrependToBackwardList(existingEdge.twin,leftClipBwMiddleRight);
+
+				//a new divergent edge(dangling) will be added to the parent of the convergent
+				Edge divergent=new Edge();
+				dcel.edgeList.Add(divergent);
+				dcel.edgeList.Add(divergent.twin);
+				converger.parent.edge=divergent;
+
+				//this divergent will also be between left and middle faces
+				triplet.middle.siteEvent.face.PrependToBackwardList(divergent.twin,leftClipBwLeftMiddle);
+				divergent.origin=leftClipBwLeftMiddle;
+				triplet.left.siteEvent.face.AppendToForwardList(divergent);
+
+			}else{//bottom vertex of middle face
+				//find the clipping with left bounds
+				float x=dcel.lx;
+				float y=dcel.GetYOfParabolaIntersectionGivenX(triplet.middle.siteEvent,triplet.right.siteEvent,x);
+				Vertex leftClip=new Vertex(x,y,true);
+				dcel.vertexList.Add(leftClip);
+
+				//append a pseudo edge
+				Edge psuedoEdge=new Edge(leftClip,true);
+				dcel.edgeList.Add(psuedoEdge);
+				triplet.middle.siteEvent.face.AppendToForwardList(psuedoEdge);
+
+				//convergent will emerge on the other side and will get clipped when its other endpoint is encountered
+				Edge convergent=new Edge();//notice that the origin is intentionally not set
+				dcel.edgeList.Add(convergent);
+				dcel.edgeList.Add(convergent.twin);
+				converger.edge=convergent;
+
+				//we will add this convergent to the left and right faces
+				triplet.left.siteEvent.face.AppendToForwardList(convergent);
+				triplet.right.siteEvent.face.PrependToBackwardList(convergent.twin);
+			}
+		}
+
+		private void ClipWithRightBounds(Vertex outside,InternalNode converger,bool convergerOnRight,DoublyConnectedEdgeList dcel){
+			if(outside.y>triplet.middle.siteEvent.y){//top vertex of middle face
+
+				//find the clipping with left bounds between left and middle
+				float x=dcel.ux;
+				float y=dcel.GetYOfParabolaIntersectionGivenX(triplet.left.siteEvent,triplet.middle.siteEvent,x);
+				Vertex rightClipBwLeftMiddle=new Vertex(x,y,true);
+				dcel.vertexList.Add(rightClipBwLeftMiddle);
+
+				//find the clipping with left bounds between middle and right
+				x=dcel.ux;
+				y=dcel.GetYOfParabolaIntersectionGivenX(triplet.middle.siteEvent,triplet.right.siteEvent,x);
+				Vertex rightClipBwMiddleRight=new Vertex(x,y,true);
+				dcel.vertexList.Add(rightClipBwMiddleRight);
+
+				//create  a pseudo edge for the clipped section
+				Edge pseudoEdge=new Edge(rightClipBwLeftMiddle,true);//left-middle will always be the upper on the left bound
+				dcel.edgeList.Add(pseudoEdge);
+
+				//get edge of grand parent 
+				Edge existingEdge=converger.edge;
+
+				//create the lists for middle face and set the existing edge's twin on the left face after setting its clipping point
+				triplet.middle.siteEvent.face.CreateForwardAndBackwardListsAt(rightClipBwLeftMiddle,existingEdge.twin,pseudoEdge);
+				existingEdge.origin=rightClipBwLeftMiddle;
+				triplet.left.siteEvent.face.AppendToForwardList(existingEdge);
+
+				//a new divergent edge(dangling) will be added to the parent of the convergent
+				Edge divergent=new Edge();
+				dcel.edgeList.Add(divergent);
+				dcel.edgeList.Add(divergent.twin);
+				converger.parent.edge=divergent;
+
+				//this divergent will also be between right and middle faces
+				triplet.right.siteEvent.face.PrependToBackwardList(divergent.twin,rightClipBwMiddleRight);
+				divergent.origin=rightClipBwMiddleRight;
+				triplet.middle.siteEvent.face.AppendToForwardList(divergent);
+
+			}else{//bottom vertex of middle face
+				//find the clipping with left bounds
+				float x=dcel.ux;
+				float y=dcel.GetYOfParabolaIntersectionGivenX(triplet.left.siteEvent,triplet.middle.siteEvent,x);
+				Vertex rightClip=new Vertex(x,y,true);
+				dcel.vertexList.Add(rightClip);
+
+				//append a pseudo edge
+				Edge psuedoEdge=new Edge(rightClip,true);
+				dcel.edgeList.Add(psuedoEdge);
+				triplet.middle.siteEvent.face.AppendToForwardList(psuedoEdge);
+
+				//convergent will emerge on the other side and will get clipped when its other endpoint is encountered
+				Edge convergent=new Edge();//notice that the origin is intentionally not set
+				dcel.edgeList.Add(convergent);
+				dcel.edgeList.Add(convergent.twin);
+				converger.edge=convergent;
+
+				//we will add this convergent to the left and right faces
+				triplet.left.siteEvent.face.AppendToForwardList(convergent);
+				triplet.right.siteEvent.face.PrependToBackwardList(convergent.twin);
+			}
+		}
+
+		/** Geometrically its only possible to get top vertex case here. */
+		private void ClipWithTopLeftCorner(DoublyConnectedEdgeList dcel){
+
+			//create another top left vertex
+			Vertex topLeftCorner=new Vertex(dcel.lx,dcel.uy,true);
+
+			//create two pseudo edges for the clips for the middle face
+			Edge cornerTop=new Edge(topLeftCorner,true);
+			Edge cornerLeft=new Edge(true);
+
+			triplet.middle.siteEvent.face.CreateForwardAndBackwardListsAt(topLeftCorner,cornerLeft,cornerTop);
+		}
+
+		/** Geometrically its only possible to get top vertex case here. */
+		private void ClipWithTopRightCorner(DoublyConnectedEdgeList dcel){			
+
+			//create another top left vertex
+			Vertex topRightCorner=new Vertex(dcel.ux,dcel.uy,true);
+
+			//create two pseudo edges for the clips for the middle face
+			Edge cornerTop=new Edge(true);
+			Edge cornerRight=new Edge(topRightCorner,true);
+
+			triplet.middle.siteEvent.face.CreateForwardAndBackwardListsAt(topRightCorner,cornerTop,cornerRight);
+		}
+
+		/** Geometrically its only possible to get bottom vertex case here. */
+		private void ClipWithBottomRightCorner(DoublyConnectedEdgeList dcel){			
+
+			//find clipping points
+			float x=dcel.ux;
+			float y=dcel.GetYOfParabolaIntersectionGivenX(triplet.middle.siteEvent,triplet.middle.siteEvent,x);
+			Vertex rightClip=new Vertex(x,y);
+
+			y=dcel.ly;
+			x=dcel.GetXOfParabolaIntersectionGivenY(triplet.middle.siteEvent,triplet.left.siteEvent,y);
+			Vertex bottomClip=new Vertex(x,y);
+
+			//create two pseudo edges for the clips for the middle face
+			Edge cornerRight=new Edge(rightClip,true);
+			Edge cornerBottom=new Edge(true);
+
+			triplet.middle.siteEvent.face.AppendToForwardList(cornerRight);
+			triplet.middle.siteEvent.face.PrependToBackwardList(cornerBottom,bottomClip);
+
+			//create another bottom right vertex
+			Vertex bottomRightCorner=new Vertex(dcel.ux,dcel.ly,true);
+			triplet.middle.siteEvent.face.ConnectBackwardAndForwardListsAt(bottomRightCorner);
+		}
+
+		/** Geometrically its only possible to get bottom vertex case here. */
+		private void ClipWithBottomLeftCorner(DoublyConnectedEdgeList dcel){			
+
+			//find clipping points
+			float x=dcel.lx;
+			float y=dcel.GetYOfParabolaIntersectionGivenX(triplet.middle.siteEvent,triplet.middle.siteEvent,x);
+			Vertex leftClip=new Vertex(x,y);
+
+			y=dcel.ly;
+			x=dcel.GetXOfParabolaIntersectionGivenY(triplet.middle.siteEvent,triplet.left.siteEvent,y);
+			Vertex bottomClip=new Vertex(x,y);
+
+			//create two pseudo edges for the clips for the middle face
+			Edge cornerLeft=new Edge(true);
+			Edge cornerBottom=new Edge(bottomClip,true);
+
+			triplet.middle.siteEvent.face.AppendToForwardList(cornerBottom);
+			triplet.middle.siteEvent.face.PrependToBackwardList(cornerLeft,leftClip);
+
+			//create another bottom left vertex
+			Vertex bottomLeftCorner=new Vertex(dcel.lx,dcel.ly,true);
+			triplet.middle.siteEvent.face.ConnectBackwardAndForwardListsAt(bottomLeftCorner);
+		}
+			
 		private Edge ClipEdgeWithUpperBoundsBetween(Parabola leftSide,Parabola rightSide,DoublyConnectedEdgeList dcel){
 			//find the clipped point with the upper bounds
 			float y = dcel.uy;
@@ -1186,6 +1383,17 @@ namespace FortuneAlgorithm{
 		public Edge(Vertex origin){
 			this.origin=origin;
 			this.twin=new Edge(this);
+		}
+
+		public Edge(Vertex origin,bool dontCreateTwin){
+			this.origin=origin;
+			if(!dontCreateTwin){
+				this.twin=new Edge(this);
+			}
+		}
+
+		public Edge(bool dontCreateTwin){
+			
 		}
 
 		public Edge ForFace(Face face){
