@@ -57,7 +57,7 @@ a {
   color: #fff;
   text-align: center;
   background-color: #159957;
-  background-image: linear-gradient(120deg, #ce4996, #1a040c); }
+  background-image: linear-gradient(120deg, #9b67ef, #593c69); }
 
 @media screen and (min-width: 64em) {
   .page-header {
@@ -112,7 +112,7 @@ a {
   margin-top: 2rem;
   margin-bottom: 1rem;
   font-weight: normal;
-  color: #492c7e; }
+  color: #f20416; }
 .main-content p {
   margin-bottom: 1em; }
 .main-content code {
@@ -243,3 +243,12 @@ a {
 @media screen and (max-width: 42em) {
   .site-footer {
     font-size: 0.9rem; } }
+
+#portfolio-website{
+    text-decoration: underline;
+    color:#f20416;
+}
+
+#portfolio-website:hover{    
+    color:#9621c1;
+}
