@@ -11,34 +11,38 @@ public class StaticFractureOnImpact : MonoBehaviour {
 
 	// Use this for initialization
 	void Start () {
-	
+		
 	}
 	
 	// Update is called once per frame
 	void Update () {
-	
+		
 	}
 
 	void OnCollisionEnter(Collision col){
 		if(col.gameObject.tag=="Projectile"){
 			Debug.Log("Entered collision with Projectile");
 			//remove this game object's mesh renderer,box collider,Mesh filter and rigid body
-			this.RemoveAllComponents();
+			Vector3 originalPosition=transform.position;
+			Material material=this.RemoveAllComponents();
 			//create two game objects of half the the width as this cube
 			//add them as child to this cube
 //			GameObject first = Instantiate(Resources.Load("SplitHalf 1", typeof(GameObject))) as GameObject;
 //			GameObject second = Instantiate(Resources.Load("SplitHalf 2", typeof(GameObject))) as GameObject;
 			DoublyConnectedEdgeList dcel= new VoronoiFracture().GetVoronoiDiagram();
-			CreateBodiesForEachFace(dcel);
+			CreateBodiesForEachFace(dcel,material,originalPosition);
+			DoublyConnectedEdgeList d=null;
+//			d.ToString();//intentional program crash for pausing
 		}
 
 	}
 
-	private void RemoveAllComponents(){
+	private Material RemoveAllComponents(){
 		BoxCollider boxCollider=this.gameObject.GetComponent(typeof(BoxCollider)) as BoxCollider;
 		Destroy(boxCollider);
 
 		MeshRenderer meshRenderer=this.gameObject.GetComponent(typeof(MeshRenderer)) as MeshRenderer;
+		Material material=meshRenderer.material;
 		Destroy(meshRenderer);
 
 		MeshFilter mesh=this.gameObject.GetComponent(typeof(MeshFilter)) as MeshFilter;
@@ -46,24 +50,28 @@ public class StaticFractureOnImpact : MonoBehaviour {
 
 		Rigidbody rigidBody=this.gameObject.GetComponent(typeof(Rigidbody)) as Rigidbody;
 		Destroy(rigidBody);
+		return material;
 	}
 
-	private void CreateBodiesForEachFace(DoublyConnectedEdgeList dcel){
+	private void CreateBodiesForEachFace(DoublyConnectedEdgeList dcel,Material material,Vector3 originalPosition){
 
 		float vWidth=dcel.ux-dcel.lx;
 		float vHeight=dcel.uy-dcel.ly;
-		float ox=transform.position.x-width/2;
-		float oy=transform.position.y-height/2;
+		float ox=originalPosition.x-width/2;
+		float oy=originalPosition.z-height/2;
+		//TODO hardcoded for now to figure out what the problem is
+		ox=-9.45f;
+		oy=-7.92f;
 		foreach(Face face in dcel.faceList){
 
-			float x=face.siteEvent.x * width/vWidth;
-			float y=face.siteEvent.y * height/vHeight;
+			float x=face.siteEvent.x * width/(vWidth*4);
+			float y=face.siteEvent.y * height/(vHeight*3);
 
 			GameObject fragment=new GameObject();
 			fragment.AddComponent<Rigidbody>();
 			MeshFilter meshFilter=fragment.AddComponent<MeshFilter>() as MeshFilter;
 			MeshRenderer meshRenderer=fragment.AddComponent<MeshRenderer>() as MeshRenderer;
-
+			meshRenderer.material=material;
 
 			meshFilter.mesh=GetMeshFor(face,dcel);
 
@@ -71,7 +79,15 @@ public class StaticFractureOnImpact : MonoBehaviour {
 			meshCollider.convex=true;
 			meshCollider.sharedMesh=meshFilter.mesh;
 
-			fragment.transform.position=new Vector3(ox+x,oy+y,0);
+			fragment.transform.position=new Vector3(ox+x,originalPosition.y,oy+y);
+		}
+	}
+
+	private float Reduction(float possiblyNegative,float alwaysPositive){
+		if(possiblyNegative<0){
+			return possiblyNegative+alwaysPositive;
+		}else{
+			return possiblyNegative-alwaysPositive;
 		}
 	}
 
