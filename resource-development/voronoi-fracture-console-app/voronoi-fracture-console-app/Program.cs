@@ -38,6 +38,11 @@ namespace FortuneAlgorithm{
 				}
 			}
 
+			//complete incomplete faces that may have dangling edges that need to get clipped by the bounds
+			foreach(Face face in dcel.faceList){
+				face.CompleteFaceIfIncomplete(dcel);	
+			}
+
 			MainClass.Log("Finished Computing Voronoi Diagram");
 		}
 
@@ -1536,6 +1541,11 @@ namespace FortuneAlgorithm{
 				last=edge;
 			}
 			last.next=start;
+		}
+
+		public bool CompleteFaceIfIncomplete(DoublyConnectedEdgeList dcel){
+			//TODO 
+			return false;
 		}
 	}
 
