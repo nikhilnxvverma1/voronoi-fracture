@@ -7,4 +7,6 @@ to shatter it into several fragments. The original body is replaced with individ
 
 ![Table top shattered by ball](https://nikhilnxvverma1.github.io/voronoi-fracture/resources/images/preview.gif)
 
+The voronoi diagram is computed using Fortune's algorithm which is implemented as a separate console application in C# (under resource-development) before getting integrated in the main project.
+
 For more information about this project, please visit the [Project Website](https://nikhilnxvverma1.github.io/voronoi-fracture/)
